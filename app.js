@@ -102,9 +102,8 @@ class Portfolio {
         vec2 d = px - m;
         float dist = length(d);
         float s = max(0., 1. - dist / rad);
-        if (tr > .5) s = max(s, .25);
 
-        if (s <= 0. && tr < .5) {
+        if (s <= 0.) {
           gl_FragColor = vec4(texture2D(t, v).rgb, 1.);
           return;
         }
