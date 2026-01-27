@@ -38,15 +38,44 @@ class Portfolio {
     this.items = [];
     this.menuItems = [];
     this.contentItems = [];
+    this.icons = {};
 
     this.initGL();
     this.resize();
     this.bind();
-    requestAnimationFrame(t => this.loop(t));
+    this.loadIcons().then(() => {
+      this.layoutDirty = true;
+      requestAnimationFrame(t => this.loop(t));
+    });
+  }
+
+  // icons
+
+  async loadIcons() {
+    const iconPaths = new Set();
+    for (const sec of Object.values(this.config.sections)) {
+      for (const item of sec) {
+        if (item.icon) iconPaths.add(item.icon);
+      }
+    }
+
+    const promises = [...iconPaths].map(path => {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          this.icons[path] = img;
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = path;
+      });
+    });
+
+    await Promise.all(promises);
   }
 
   // webgl
-  
+
   initGL() {
     const gl = this.gl;
 
@@ -156,12 +185,17 @@ class Portfolio {
   
   open(name) {
     if (this.trans || this.section === name) return;
+    const type = this.section ? 2 : 0;
     this.trans = {
-      type: this.section ? 2 : 0,
+      type,
       from: this.section,
       to: name,
       start: performance.now()
     };
+    if (type === 0) {
+      this.section = name;
+      this.buildItems();
+    }
     this.layoutDirty = true;
   }
 
@@ -197,19 +231,24 @@ class Portfolio {
       this.menuY = e * .35;
       this.contentX = 1 - e;
       this.contentY = 1 - e;
-      if (t >= .5) this.section = this.trans.to;
     } else if (this.trans.type === 1) {
       this.menuX = .35 * (1 - e);
       this.menuY = .35 * (1 - e);
       this.contentX = e;
       this.contentY = e;
-      if (t >= .5) this.section = null;
+      if (t >= .5 && this.section !== null) {
+        this.section = null;
+        this.buildItems();
+      }
     } else {
       this.menuX = .35;
       this.menuY = .35;
       this.contentX = t < .5 ? this.ease(t*2) : 1 - this.ease((t-.5)*2);
       this.contentY = t < .5 ? this.ease(t*2) : 1 - this.ease((t-.5)*2);
-      if (t >= .5) this.section = this.trans.to;
+      if (t >= .5 && this.section !== this.trans.to) {
+        this.section = this.trans.to;
+        this.buildItems();
+      }
     }
 
     if (t >= 1) {
@@ -242,12 +281,21 @@ class Portfolio {
 
     const sec = this.getActiveSection();
     if (sec) {
-      this.config.sections[sec].forEach(c =>
-        items.push({ text: c.text, size: c.fontSize || 28, type: 2, href: c.href })
-      );
+      const sectionConfig = this.config.sections[sec];
+      const isHorizontal = sectionConfig.some(c => c.icon);
+      this.config.sections[sec].forEach(c => {
+        if (c.icon) {
+          items.push({ icon: c.icon, size: c.size || 32, type: 2, href: c.href, horizontal: isHorizontal });
+        } else {
+          items.push({ text: c.text, size: c.fontSize || 28, type: 2, href: c.href, horizontal: isHorizontal });
+        }
+      });
     }
 
     this.items = items.map(it => {
+      if (it.icon) {
+        return { ...it, w: it.size };
+      }
       this.ctx.font = `bold ${it.size}px ${Portfolio.FONT}`;
       return { ...it, w: this.ctx.measureText(it.text).width };
     });
@@ -279,6 +327,31 @@ class Portfolio {
     }
 
     const i = this.contentItems.indexOf(it);
+    const isHorizontal = it.horizontal;
+
+    if (isHorizontal) {
+      const totalWidth = this.contentItems.reduce((sum, c) => sum + c.w, 0);
+      const gap = 40;
+      const totalWithGaps = totalWidth + (this.contentItems.length - 1) * gap;
+      let offsetX = 0;
+      for (let j = 0; j < i; j++) {
+        offsetX += this.contentItems[j].w + gap;
+      }
+      const startX = -totalWithGaps / 2 + it.w / 2;
+
+      if (portrait) {
+        const x = W / 2 + startX + offsetX;
+        const baseY = H * .7;
+        const y = baseY + this.contentY * H * .5;
+        return { x: x - it.w/2, y: y - it.size/2, rx: x, ry: y };
+      } else {
+        const baseX = W * .65;
+        const x = baseX + startX + offsetX + this.contentX * W * .5;
+        const y = H / 2;
+        return { x: x - it.w/2, y: y - it.size/2, rx: x, ry: y };
+      }
+    }
+
     if (portrait) {
       const x = W / 2;
       const baseY = H * .7;
@@ -325,8 +398,12 @@ class Portfolio {
 
     for (const it of this.items) {
       const p = this.pos(it);
-      ctx.font = `bold ${it.size}px ${Portfolio.FONT}`;
-      ctx.fillText(it.text, p.rx, p.ry);
+      if (it.icon && this.icons[it.icon]) {
+        ctx.drawImage(this.icons[it.icon], p.rx - it.size/2, p.ry - it.size/2, it.size, it.size);
+      } else if (it.text) {
+        ctx.font = `bold ${it.size}px ${Portfolio.FONT}`;
+        ctx.fillText(it.text, p.rx, p.ry);
+      }
     }
   }
 
@@ -337,7 +414,7 @@ class Portfolio {
 
     this.update(now);
 
-    if (this.layoutDirty) {
+    if (this.layoutDirty && !this.trans) {
       this.buildItems();
       this.layoutDirty = false;
     }
@@ -443,7 +520,10 @@ document.addEventListener('DOMContentLoaded', () => {
     sections: {
       about: [{ text: 'todo', fontSize: 24 }],
       projects: [{ text: 'todo', fontSize: 28 }],
-      contact: [{ text: 'todo', fontSize: 24 }]
+      contact: [
+        { icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0xMiAwQzUuMzcgMCAwIDUuMzcgMCAxMmMwIDUuMzEgMy40MzUgOS43OTUgOC4yMDUgMTEuMzg1LjYuMTA1LjgyNS0uMjU1LjgyNS0uNTcgMC0uMjg1LS4wMTUtMS4yMy0uMDE1LTIuMjM1LTMuMDE1LjU1NS0zLjc5NS0uNzM1LTQuMDM1LTEuNDEtLjEzNS0uMzQ1LS43Mi0xLjQxLTEuMjMtMS42OTUtLjQyLS4yMjUtMS4wMi0uNzgtLjAxNS0uNzk1Ljk0NS0uMDE1IDEuNjIuODcgMS44NDUgMS4yMyAxLjA4IDEuODE1IDIuODA1IDEuMzA1IDMuNDk1Ljk5LjEwNS0uNzguNDItMS4zMDUuNzY1LTEuNjA1LTIuNjctLjMtNS40Ni0xLjMzNS01LjQ2LTUuOTI1IDAtMS4zMDUuNDY1LTIuMzg1IDEuMjMtMy4yMjUtLjEyLS4zLS41NC0xLjUzLjEyLTMuMTggMCAwIDEuMDA1LS4zMTUgMy4zIDEuMjMuOTYtLjI3IDEuOTgtLjQwNSAzLS40MDVzMi4wNC4xMzUgMyAuNDA1YzIuMjk1LTEuNTYgMy4zLTEuMjMgMy4zLTEuMjMuNjYgMS42NS4yNCAyLjg4LjEyIDMuMTguNzY1Ljg0IDEuMjMgMS45MDUgMS4yMyAzLjIyNSAwIDQuNjA1LTIuODA1IDUuNjI1LTUuNDc1IDUuOTI1LjQzNS4zNzUuODEgMS4wOTUuODEgMi4yMiAwIDEuNjA1LS4wMTUgMi44OTUtLjAxNSAzLjMgMCAuMzE1LjIyNS42OS44MjUuNTdBMTIuMDIgMTIuMDIgMCAwIDAgMjQgMTJjMC02LjYzLTUuMzctMTItMTItMTJ6Ii8+PC9zdmc+', size: 36, href: 'https://github.com/nnmarcoo' },
+        { icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0yMC40NDcgMjAuNDUyaC0zLjU1NHYtNS41NjljMC0xLjMyOC0uMDI3LTMuMDM3LTEuODUyLTMuMDM3LTEuODUzIDAtMi4xMzYgMS40NDUtMi4xMzYgMi45Mzl2NS42NjdIOS4zNTFWOWgzLjQxNHYxLjU2MWguMDQ2Yy40NzctLjkgMS42MzctMS44NSAzLjM3LTEuODUgMy42MDEgMCA0LjI2NyAyLjM3IDQuMjY3IDUuNDU1djYuMjg2ek01LjMzNyA3LjQzM2EyLjA2MiAyLjA2MiAwIDAgMS0yLjA2My0yLjA2NSAyLjA2NCAyLjA2NCAwIDEgMSAyLjA2MyAyLjA2NXptMS43ODIgMTMuMDE5SDMuNTU1VjloMy41NjR2MTEuNDUyek0yMi4yMjUgMEgxLjc3MUMuNzkyIDAgMCAuNzc0IDAgMS43Mjl2MjAuNTQyQzAgMjMuMjI3Ljc5MiAyNCAxLjc3MSAyNGgyMC40NTFDMjMuMiAyNCAyNCAyMy4yMjcgMjQgMjIuMjcxVjEuNzI5QzI0IC43NzQgMjMuMiAwIDIyLjIyMiAwaC4wMDN6Ii8+PC9zdmc+', size: 36, href: 'https://www.linkedin.com/in/marco-todorov' }
+      ]
     }
   });
 });
