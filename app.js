@@ -285,7 +285,7 @@ class Portfolio {
       const isHorizontal = sectionConfig.some(c => c.icon);
       this.config.sections[sec].forEach(c => {
         if (c.icon) {
-          items.push({ icon: c.icon, size: c.size || 32, type: 2, href: c.href, horizontal: isHorizontal });
+          items.push({ icon: c.icon, size: c.size || 32, width: c.width, type: 2, href: c.href, horizontal: isHorizontal });
         } else {
           items.push({ text: c.text, size: c.fontSize || 28, type: 2, href: c.href, horizontal: isHorizontal });
         }
@@ -294,7 +294,8 @@ class Portfolio {
 
     this.items = items.map(it => {
       if (it.icon) {
-        return { ...it, w: it.size };
+        const w = it.width || it.size;
+        return { ...it, w };
       }
       this.ctx.font = `bold ${it.size}px ${Portfolio.FONT}`;
       return { ...it, w: this.ctx.measureText(it.text).width };
@@ -321,13 +322,19 @@ class Portfolio {
         return { x: x - it.w/2, y: y - it.size/2, rx: x, ry: y };
       } else {
         const y = H/2 - this.menuItems.length*30 + 30 + i*60;
-        const x = W/2 - this.menuX * W;
+        const t = this.menuX / .35;
+        const centerX = W/2 - this.menuX * W;
+        const leftX = 40 + it.w/2;
+        const x = centerX + (leftX - centerX) * t;
         return { x: x - it.w/2, y: y - it.size/2, rx: x, ry: y };
       }
     }
 
     const i = this.contentItems.indexOf(it);
     const isHorizontal = it.horizontal;
+
+    const menuRightEdge = 200;
+    const contentCenterX = menuRightEdge + (W - menuRightEdge) / 2;
 
     if (isHorizontal) {
       const totalWidth = this.contentItems.reduce((sum, c) => sum + c.w, 0);
@@ -345,7 +352,7 @@ class Portfolio {
         const y = baseY + this.contentY * H * .5;
         return { x: x - it.w/2, y: y - it.size/2, rx: x, ry: y };
       } else {
-        const baseX = W * .65;
+        const baseX = contentCenterX;
         const x = baseX + startX + offsetX + this.contentX * W * .5;
         const y = H / 2;
         return { x: x - it.w/2, y: y - it.size/2, rx: x, ry: y };
@@ -359,7 +366,7 @@ class Portfolio {
       return { x: x - it.w/2, y: y - it.size/2, rx: x, ry: y };
     } else {
       const y = H/2 - this.contentItems.length*25 + 25 + i*50;
-      const x = W*.65 + this.contentX * W*.5;
+      const x = contentCenterX + this.contentX * W * .5;
       return { x: x - it.w/2, y: y - it.size/2, rx: x, ry: y };
     }
   }
@@ -399,7 +406,8 @@ class Portfolio {
     for (const it of this.items) {
       const p = this.pos(it);
       if (it.icon && this.icons[it.icon]) {
-        ctx.drawImage(this.icons[it.icon], p.rx - it.size/2, p.ry - it.size/2, it.size, it.size);
+        const iconW = it.width || it.size;
+        ctx.drawImage(this.icons[it.icon], p.rx - iconW/2, p.ry - it.size/2, iconW, it.size);
       } else if (it.text) {
         ctx.font = `bold ${it.size}px ${Portfolio.FONT}`;
         ctx.fillText(it.text, p.rx, p.ry);
@@ -522,7 +530,8 @@ document.addEventListener('DOMContentLoaded', () => {
       projects: [{ text: 'todo', fontSize: 28 }],
       contact: [
         { icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0xMiAwQzUuMzcgMCAwIDUuMzcgMCAxMmMwIDUuMzEgMy40MzUgOS43OTUgOC4yMDUgMTEuMzg1LjYuMTA1LjgyNS0uMjU1LjgyNS0uNTcgMC0uMjg1LS4wMTUtMS4yMy0uMDE1LTIuMjM1LTMuMDE1LjU1NS0zLjc5NS0uNzM1LTQuMDM1LTEuNDEtLjEzNS0uMzQ1LS43Mi0xLjQxLTEuMjMtMS42OTUtLjQyLS4yMjUtMS4wMi0uNzgtLjAxNS0uNzk1Ljk0NS0uMDE1IDEuNjIuODcgMS44NDUgMS4yMyAxLjA4IDEuODE1IDIuODA1IDEuMzA1IDMuNDk1Ljk5LjEwNS0uNzguNDItMS4zMDUuNzY1LTEuNjA1LTIuNjctLjMtNS40Ni0xLjMzNS01LjQ2LTUuOTI1IDAtMS4zMDUuNDY1LTIuMzg1IDEuMjMtMy4yMjUtLjEyLS4zLS41NC0xLjUzLjEyLTMuMTggMCAwIDEuMDA1LS4zMTUgMy4zIDEuMjMuOTYtLjI3IDEuOTgtLjQwNSAzLS40MDVzMi4wNC4xMzUgMyAuNDA1YzIuMjk1LTEuNTYgMy4zLTEuMjMgMy4zLTEuMjMuNjYgMS42NS4yNCAyLjg4LjEyIDMuMTguNzY1Ljg0IDEuMjMgMS45MDUgMS4yMyAzLjIyNSAwIDQuNjA1LTIuODA1IDUuNjI1LTUuNDc1IDUuOTI1LjQzNS4zNzUuODEgMS4wOTUuODEgMi4yMiAwIDEuNjA1LS4wMTUgMi44OTUtLjAxNSAzLjMgMCAuMzE1LjIyNS42OS44MjUuNTdBMTIuMDIgMTIuMDIgMCAwIDAgMjQgMTJjMC02LjYzLTUuMzctMTItMTItMTJ6Ii8+PC9zdmc+', size: 36, href: 'https://github.com/nnmarcoo' },
-        { icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0yMC40NDcgMjAuNDUyaC0zLjU1NHYtNS41NjljMC0xLjMyOC0uMDI3LTMuMDM3LTEuODUyLTMuMDM3LTEuODUzIDAtMi4xMzYgMS40NDUtMi4xMzYgMi45Mzl2NS42NjdIOS4zNTFWOWgzLjQxNHYxLjU2MWguMDQ2Yy40NzctLjkgMS42MzctMS44NSAzLjM3LTEuODUgMy42MDEgMCA0LjI2NyAyLjM3IDQuMjY3IDUuNDU1djYuMjg2ek01LjMzNyA3LjQzM2EyLjA2MiAyLjA2MiAwIDAgMS0yLjA2My0yLjA2NSAyLjA2NCAyLjA2NCAwIDEgMSAyLjA2MyAyLjA2NXptMS43ODIgMTMuMDE5SDMuNTU1VjloMy41NjR2MTEuNDUyek0yMi4yMjUgMEgxLjc3MUMuNzkyIDAgMCAuNzc0IDAgMS43Mjl2MjAuNTQyQzAgMjMuMjI3Ljc5MiAyNCAxLjc3MSAyNGgyMC40NTFDMjMuMiAyNCAyNCAyMy4yMjcgMjQgMjIuMjcxVjEuNzI5QzI0IC43NzQgMjMuMiAwIDIyLjIyMiAwaC4wMDN6Ii8+PC9zdmc+', size: 36, href: 'https://www.linkedin.com/in/marco-todorov' }
+        { icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0yMC40NDcgMjAuNDUyaC0zLjU1NHYtNS41NjljMC0xLjMyOC0uMDI3LTMuMDM3LTEuODUyLTMuMDM3LTEuODUzIDAtMi4xMzYgMS40NDUtMi4xMzYgMi45Mzl2NS42NjdIOS4zNTFWOWgzLjQxNHYxLjU2MWguMDQ2Yy40NzctLjkgMS42MzctMS44NSAzLjM3LTEuODUgMy42MDEgMCA0LjI2NyAyLjM3IDQuMjY3IDUuNDU1djYuMjg2ek01LjMzNyA3LjQzM2EyLjA2MiAyLjA2MiAwIDAgMS0yLjA2My0yLjA2NSAyLjA2NCAyLjA2NCAwIDEgMSAyLjA2MyAyLjA2NXptMS43ODIgMTMuMDE5SDMuNTU1VjloMy41NjR2MTEuNDUyek0yMi4yMjUgMEgxLjc3MUMuNzkyIDAgMCAuNzc0IDAgMS43Mjl2MjAuNTQyQzAgMjMuMjI3Ljc5MiAyNCAxLjc3MSAyNGgyMC40NTFDMjMuMiAyNCAyNCAyMy4yMjcgMjQgMjIuMjcxVjEuNzI5QzI0IC43NzQgMjMuMiAwIDIyLjIyMiAwaC4wMDN6Ii8+PC9zdmc+', size: 36, href: 'https://www.linkedin.com/in/marco-todorov' },
+        { icon: 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIGlkPSJEaXNjb3JkLUxvZ28iIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDEyNi42NDQgOTYiPjxkZWZzPjxzdHlsZT4uY2xzLTF7ZmlsbDojZmZmO308L3N0eWxlPjwvZGVmcz48cGF0aCBpZD0iRGlzY29yZC1TeW1ib2wtV2hpdGUiIGNsYXNzPSJjbHMtMSIgZD0iTTgxLjE1LDBjLTEuMjM3NiwyLjE5NzMtMi4zNDg5LDQuNDcwNC0zLjM1OTEsNi43OTQtOS41OTc1LTEuNDM5Ni0xOS4zNzE4LTEuNDM5Ni0yOC45OTQ1LDAtLjk4NS0yLjMyMzYtMi4xMjE2LTQuNTk2Ny0zLjM1OTEtNi43OTQtOS4wMTY2LDEuNTQwNy0xNy44MDU5LDQuMjQzMS0yNi4xNDA1LDguMDU2OEMyLjc3OSwzMi41MzA0LTEuNjkxNCw1Ni4zNzI1LjUzMTIsNzkuODg2M2M5LjY3MzIsNy4xNDc2LDIwLjUwODMsMTIuNjAzLDMyLjA1MDUsMTYuMDg4NCwyLjYwMTQtMy40ODU0LDQuODk5OC03LjE5ODEsNi44Njk4LTExLjA2MjMtMy43MzgtMS4zODkxLTcuMzQ5Ny0zLjEzMTgtMTAuODA5OC01LjE1MjMuOTA5Mi0uNjU2NywxLjc5MzItMS4zMzg2LDIuNjUxOS0xLjk5NTMsMjAuMjgxLDkuNTQ3LDQzLjc2OTYsOS41NDcsNjQuMDc1OCwwLC44NTg3LjcwNzIsMS43NDI3LDEuMzg5MSwyLjY1MTksMS45OTUzLTMuNDYwMSwyLjA0NTctNy4wNzE4LDMuNzYzMi0xMC44MzUsNS4xNzc2LDEuOTcsMy44NjQyLDQuMjY4Myw3LjU3NjksNi44Njk4LDExLjA2MjMsMTEuNTQxOS0zLjQ4NTQsMjIuMzc2OS04LjkxNTYsMzIuMDUwOS0xNi4wNjMxLDIuNjI2LTI3LjI3NzEtNC40OTYtNTAuOTE3Mi0xOC44MTctNzEuODU0OEM5OC45ODExLDQuMjY4NCw5MC4xOTE4LDEuNTY1OSw4MS4xNzUyLjA1MDVsLS4wMjUyLS4wNTA1Wk00Mi4yODAyLDY1LjQxNDRjLTYuMjM4MywwLTExLjQxNTktNS42NTc1LTExLjQxNTktMTIuNjUzNXM0Ljk3NTUtMTIuNjc4OCwxMS4zOTA3LTEyLjY3ODgsMTEuNTE2OSw1LjcwOCwxMS40MTU5LDEyLjY3ODhjLS4xMDEsNi45NzA4LTUuMDI2LDEyLjY1MzUtMTEuMzkwNywxMi42NTM1Wk04NC4zNTc2LDY1LjQxNDRjLTYuMjYzNywwLTExLjM5MDctNS42NTc1LTExLjM5MDctMTIuNjUzNXM0Ljk3NTUtMTIuNjc4OCwxMS4zOTA3LTEyLjY3ODgsMTEuNDkxNyw1LjcwOCwxMS4zOTA2LDEyLjY3ODhjLS4xMDEsNi45NzA4LTUuMDI2LDEyLjY1MzUtMTEuMzkwNiwxMi42NTM1WiIvPjwvc3ZnPg==', size: 36, width: 47, href: 'https://discord.com/users/nnmarco' }
       ]
     }
   });
