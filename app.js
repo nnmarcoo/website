@@ -17,7 +17,9 @@ class Portfolio {
 
     // layout
     this.menuX = 0;
+    this.menuY = 0;
     this.contentX = 1;
+    this.contentY = 1;
     this.layoutDirty = true;
 
     // interaction (CSS-space)
@@ -177,6 +179,10 @@ class Portfolio {
     return t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
   }
 
+  isPortrait() {
+    return this.cssH > this.cssW;
+  }
+
   update(now) {
     if (!this.trans) return;
 
@@ -188,15 +194,21 @@ class Portfolio {
 
     if (this.trans.type === 0) {
       this.menuX = e * .35;
+      this.menuY = e * .35;
       this.contentX = 1 - e;
+      this.contentY = 1 - e;
       if (t >= .5) this.section = this.trans.to;
     } else if (this.trans.type === 1) {
       this.menuX = .35 * (1 - e);
+      this.menuY = .35 * (1 - e);
       this.contentX = e;
+      this.contentY = e;
       if (t >= .5) this.section = null;
     } else {
       this.menuX = .35;
+      this.menuY = .35;
       this.contentX = t < .5 ? this.ease(t*2) : 1 - this.ease((t-.5)*2);
+      this.contentY = t < .5 ? this.ease(t*2) : 1 - this.ease((t-.5)*2);
       if (t >= .5) this.section = this.trans.to;
     }
 
@@ -204,7 +216,9 @@ class Portfolio {
       this.trans = null;
       this.intensity = 1;
       this.menuX = this.section ? .35 : 0;
+      this.menuY = this.section ? .35 : 0;
       this.contentX = this.section ? 0 : 1;
+      this.contentY = this.section ? 0 : 1;
       this.layoutDirty = true;
     }
   }
@@ -245,21 +259,36 @@ class Portfolio {
   pos(it) {
     const W = this.cssW;
     const H = this.cssH;
+    const portrait = this.isPortrait();
 
     if (it.type === 0)
       return { x: 40, y: 50 - it.size/2, rx: 40 + it.w/2, ry: 50 };
 
     if (it.type === 1) {
       const i = this.menuItems.indexOf(it);
-      const y = H/2 - this.menuItems.length*30 + 30 + i*60;
-      const x = W/2 - this.menuX * W;
-      return { x: x - it.w/2, y: y - it.size/2, rx: x, ry: y };
+      if (portrait) {
+        const x = W / 2;
+        const baseY = H * .35;
+        const y = baseY - this.menuItems.length*30 + 30 + i*60 - this.menuY * H * .35;
+        return { x: x - it.w/2, y: y - it.size/2, rx: x, ry: y };
+      } else {
+        const y = H/2 - this.menuItems.length*30 + 30 + i*60;
+        const x = W/2 - this.menuX * W;
+        return { x: x - it.w/2, y: y - it.size/2, rx: x, ry: y };
+      }
     }
 
     const i = this.contentItems.indexOf(it);
-    const y = H/2 - this.contentItems.length*25 + 25 + i*50;
-    const x = W*.65 + this.contentX * W*.5;
-    return { x: x - it.w/2, y: y - it.size/2, rx: x, ry: y };
+    if (portrait) {
+      const x = W / 2;
+      const baseY = H * .7;
+      const y = baseY - this.contentItems.length*25 + 25 + i*50 + this.contentY * H * .5;
+      return { x: x - it.w/2, y: y - it.size/2, rx: x, ry: y };
+    } else {
+      const y = H/2 - this.contentItems.length*25 + 25 + i*50;
+      const x = W*.65 + this.contentX * W*.5;
+      return { x: x - it.w/2, y: y - it.size/2, rx: x, ry: y };
+    }
   }
 
   // mouse hit detection
