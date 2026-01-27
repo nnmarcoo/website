@@ -29,6 +29,11 @@ class Portfolio {
         this.section = null;
         this.trans = null;
 
+        // projects
+        this.projectImages = {};
+        this.projectScroll = 0;
+        this.projectScrollTarget = 0;
+
         // layout
         this.menuX = 0;
         this.menuY = 0;
@@ -36,7 +41,7 @@ class Portfolio {
         this.contentY = 1;
         this.layoutDirty = true;
 
-        // interaction (CSS-space)
+        // interaction
         this.mouse = {
             x: 0,
             y: 0
@@ -60,13 +65,13 @@ class Portfolio {
         this.initGL();
         this.resize();
         this.bind();
-        this.loadIcons().then(() => {
+        Promise.all([this.loadIcons(), this.loadProjectImages()]).then(() => {
             this.layoutDirty = true;
             requestAnimationFrame(t => this.loop(t));
         });
     }
 
-    // icons
+    // assets
 
     async loadIcons() {
         const iconPaths = new Set();
@@ -85,6 +90,26 @@ class Portfolio {
                 };
                 img.onerror = () => resolve();
                 img.src = path;
+            });
+        });
+
+        await Promise.all(promises);
+    }
+
+    async loadProjectImages() {
+        const projects = this.config.sections.projects;
+        if (!projects || !Array.isArray(projects)) return;
+
+        const promises = projects.map(project => {
+            if (!project.image) return Promise.resolve();
+            return new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => {
+                    this.projectImages[project.image] = img;
+                    resolve();
+                };
+                img.onerror = () => resolve();
+                img.src = project.image;
             });
         });
 
@@ -141,7 +166,9 @@ class Portfolio {
         float G = texture2D(t, bl - dr * w / r).g;
         float B = texture2D(t, bl - dr * (w - sp * s) / r).b;
 
-        vec3 col = R * tintR + G * tintG + B * tintB;
+        vec3 tinted = R * tintR + G * tintG + B * tintB;
+        vec3 untinted = texture2D(t, v).rgb;
+        vec3 col = mix(untinted, tinted, s * s);
 
         float coreRadius = rad * coreRad;
         if (dist < coreRadius) {
@@ -233,7 +260,7 @@ class Portfolio {
         };
     }
 
-    // state & transitions
+    // transitions
 
     open(name) {
         if (this.trans || this.section === name) return;
@@ -244,6 +271,10 @@ class Portfolio {
             to: name,
             start: performance.now()
         };
+        if (name === 'projects') {
+            this.projectScroll = 0;
+            this.projectScrollTarget = 0;
+        }
         if (type === 0) {
             this.section = name;
             this.buildItems();
@@ -320,6 +351,13 @@ class Portfolio {
         return this.trans.type === 1 ? this.trans.from : this.trans.to;
     }
 
+    isProjectGrid() {
+        const sec = this.getActiveSection();
+        if (sec !== 'projects') return false;
+        const projects = this.config.sections.projects;
+        return projects && projects.length > 0 && projects[0].image;
+    }
+
     // layout
 
     buildItems() {
@@ -341,28 +379,45 @@ class Portfolio {
 
         const sec = this.getActiveSection();
         if (sec) {
-            const sectionConfig = this.config.sections[sec];
-            const isHorizontal = sectionConfig.some(c => c.icon);
-            this.config.sections[sec].forEach(c => {
-                if (c.icon) {
+            if (this.isProjectGrid()) {
+                const projects = this.config.sections.projects;
+                projects.forEach((project, i) => {
                     items.push({
-                        icon: c.icon,
-                        size: c.size || 32,
-                        width: c.width,
-                        type: 2,
-                        href: c.href,
-                        horizontal: isHorizontal
+                        type: 3,
+                        subtype: 'grid-item',
+                        image: project.image,
+                        title: project.title,
+                        description: project.description,
+                        index: i,
+                        size: 140,
+                        w: 220,
+                        href: project.href
                     });
-                } else {
-                    items.push({
-                        text: c.text,
-                        size: c.fontSize || 28,
-                        type: 2,
-                        href: c.href,
-                        horizontal: isHorizontal
-                    });
-                }
-            });
+                });
+            } else {
+                const sectionConfig = this.config.sections[sec];
+                const isHorizontal = sectionConfig.some(c => c.icon);
+                this.config.sections[sec].forEach(c => {
+                    if (c.icon) {
+                        items.push({
+                            icon: c.icon,
+                            size: c.size || 32,
+                            width: c.width,
+                            type: 2,
+                            href: c.href,
+                            horizontal: isHorizontal
+                        });
+                    } else {
+                        items.push({
+                            text: c.text,
+                            size: c.fontSize || 28,
+                            type: 2,
+                            href: c.href,
+                            horizontal: isHorizontal
+                        });
+                    }
+                });
+            }
         }
 
         this.items = items.map(it => {
@@ -373,6 +428,9 @@ class Portfolio {
                     w
                 };
             }
+            if (it.type === 3) {
+                return it;
+            }
             this.ctx.font = `bold ${it.size}px ${Portfolio.FONT}`;
             return {
                 ...it,
@@ -381,7 +439,7 @@ class Portfolio {
         });
 
         this.menuItems = this.items.filter(i => i.type === 1);
-        this.contentItems = this.items.filter(i => i.type === 2);
+        this.contentItems = this.items.filter(i => i.type === 2 || i.type === 3);
     }
 
     pos(it) {
@@ -463,6 +521,10 @@ class Portfolio {
             }
         }
 
+        if (it.type === 3) {
+            return this.posGrid(it, W, H, portrait, contentCenterX);
+        }
+
         if (portrait) {
             const x = W / 2;
             const baseY = H * .7;
@@ -485,7 +547,59 @@ class Portfolio {
         }
     }
 
-    // mouse hit detection
+    posGrid(it, W, H, portrait, contentCenterX) {
+        const baseX = portrait ? W / 2 : contentCenterX;
+
+        const itemW = it.w;
+        const itemH = it.size;
+        const gap = 30;
+        const titleH = 60;
+
+        const gridItems = this.contentItems.filter(c => c.subtype === 'grid-item');
+        const count = gridItems.length;
+
+        const availW = portrait ? W - 60 : (W - 200) * 0.8;
+        const maxCols = Math.max(1, Math.floor((availW + gap) / (itemW + gap)));
+        const cols = Math.max(1, Math.min(maxCols, Math.ceil(Math.sqrt(count))));
+        const rows = Math.ceil(count / cols);
+
+        const idx = it.index;
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+
+        const gridW = cols * itemW + (cols - 1) * gap;
+        const gridH = rows * (itemH + titleH + gap) - gap;
+
+        let startY;
+        if (portrait) {
+            const menuBottom = H * 0.35 + this.menuItems.length * 30 + 40;
+            startY = menuBottom + itemH / 2;
+        } else {
+            const availableH = H - 80;
+            if (gridH > availableH) {
+                startY = 40 + itemH / 2;
+            } else {
+                const baseY = H / 2;
+                startY = baseY - gridH / 2 + itemH / 2;
+            }
+        }
+
+        const startX = baseX - gridW / 2 + itemW / 2;
+        const baseItemX = startX + col * (itemW + gap);
+        const transX = this.contentX * (W - baseItemX + itemW);
+
+        const x = baseItemX + transX;
+        const y = startY + row * (itemH + titleH + gap) - this.projectScroll;
+
+        return {
+            x: x - itemW / 2,
+            y: y - itemH / 2,
+            rx: x,
+            ry: y
+        };
+    }
+
+    // hit detection
 
     hit(e) {
         if (!this.items.length) this.buildItems();
@@ -519,7 +633,9 @@ class Portfolio {
 
         for (const it of this.items) {
             const p = this.pos(it);
-            if (it.icon && this.icons[it.icon]) {
+            if (it.type === 3) {
+                this.drawGridItem(ctx, it, p);
+            } else if (it.icon && this.icons[it.icon]) {
                 const iconW = it.width || it.size;
                 ctx.drawImage(this.icons[it.icon], p.rx - iconW / 2, p.ry - it.size / 2, iconW, it.size);
             } else if (it.text) {
@@ -529,10 +645,41 @@ class Portfolio {
         }
     }
 
+    drawGridItem(ctx, it, p) {
+        const img = this.projectImages[it.image];
+        const w = it.w;
+        const h = it.size;
+        const leftX = p.rx - w / 2;
+
+        if (img) {
+            ctx.drawImage(img, leftX, p.ry - h / 2, w, h);
+        } else {
+            ctx.strokeStyle = '#3366ff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(leftX, p.ry - h / 2, w, h);
+        }
+
+        ctx.textAlign = 'left';
+        if (it.title) {
+            ctx.fillStyle = '#fff';
+            ctx.font = `bold 18px ${Portfolio.FONT}`;
+            ctx.fillText(it.title, leftX, p.ry + h / 2 + 22);
+        }
+
+        if (it.description) {
+            ctx.fillStyle = '#888';
+            ctx.font = `14px ${Portfolio.FONT}`;
+            ctx.fillText(it.description, leftX, p.ry + h / 2 + 44);
+        }
+        ctx.textAlign = 'center';
+    }
+
     loop(now) {
         const dt = (now - this.lastTime) / 1000 || 0;
         this.lastTime = now;
         this.time += dt;
+
+        this.projectScroll += (this.projectScrollTarget - this.projectScroll) * 0.15;
 
         this.update(now);
 
@@ -545,10 +692,27 @@ class Portfolio {
         let sz = 36;
         for (const it of this.items) {
             const p = this.pos(it);
-            const d = Math.hypot(this.mouse.x - p.rx, this.mouse.y - p.ry);
-            if (d < minD) {
-                minD = d;
-                sz = it.size;
+            if (it.type === 3) {
+                const imgBottom = p.ry + it.size / 2;
+                if (this.mouse.y > imgBottom) {
+                    const textD = Math.hypot(this.mouse.x - p.rx, this.mouse.y - (imgBottom + 30));
+                    if (textD < minD) {
+                        minD = textD;
+                        sz = 14;
+                    }
+                } else {
+                    const d = Math.hypot(this.mouse.x - p.rx, this.mouse.y - p.ry);
+                    if (d < minD) {
+                        minD = d;
+                        sz = it.size;
+                    }
+                }
+            } else {
+                const d = Math.hypot(this.mouse.x - p.rx, this.mouse.y - p.ry);
+                if (d < minD) {
+                    minD = d;
+                    sz = it.size;
+                }
             }
         }
         this.block += (Math.max(2, Math.min(6, sz / 12)) - this.block) * .1;
@@ -628,6 +792,12 @@ class Portfolio {
         );
 
         this.layoutDirty = true;
+
+        if (this.section === 'projects') {
+            const maxScroll = this.getMaxProjectScroll();
+            this.projectScrollTarget = Math.min(this.projectScrollTarget, maxScroll);
+            this.projectScroll = Math.min(this.projectScroll, maxScroll);
+        }
     }
 
     bind() {
@@ -644,6 +814,49 @@ class Portfolio {
             if (h?.act) h.act();
             else if (h?.href) window.open(h.href, '_blank');
         });
+
+        this.canvas.addEventListener('wheel', e => {
+            if (this.section === 'projects' && !this.trans) {
+                e.preventDefault();
+                const maxScroll = this.getMaxProjectScroll();
+                this.projectScrollTarget = Math.max(0, Math.min(maxScroll, this.projectScrollTarget + e.deltaY));
+            }
+        }, {
+            passive: false
+        });
+    }
+
+    getMaxProjectScroll() {
+        if (!this.isProjectGrid()) return 0;
+
+        const gridItems = this.contentItems.filter(c => c.subtype === 'grid-item');
+        if (gridItems.length === 0) return 0;
+
+        const it = gridItems[0];
+        const itemH = it.size;
+        const titleH = 60;
+        const gap = 30;
+        const itemW = it.w;
+        const W = this.cssW;
+        const H = this.cssH;
+        const portrait = this.isPortrait();
+
+        const availW = portrait ? W - 60 : (W - 200) * 0.8;
+        const maxCols = Math.max(1, Math.floor((availW + gap) / (itemW + gap)));
+        const cols = Math.max(1, Math.min(maxCols, Math.ceil(Math.sqrt(gridItems.length))));
+        const rows = Math.ceil(gridItems.length / cols);
+
+        const gridH = rows * (itemH + titleH + gap) - gap;
+
+        let availableH;
+        if (portrait) {
+            const menuBottom = H * 0.35 + this.menuItems.length * 30 + 40;
+            availableH = H - menuBottom - 40;
+        } else {
+            availableH = H - 80;
+        }
+
+        return Math.max(0, gridH - availableH);
     }
 }
 
@@ -658,20 +871,45 @@ document.addEventListener('DOMContentLoaded', () => {
                 text: 'projects',
                 section: 'projects'
             },
+
             {
                 text: 'contact',
                 section: 'contact'
-            }
+            },
+            {
+                text: 'blog',
+                section: 'blog'
+            },
         ],
         sections: {
             about: [{
-                text: 'todo',
-                fontSize: 24
+                text: 'todo'
             }],
             projects: [{
-                text: 'todo',
-                fontSize: 28
-            }],
+                    image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyODAiIGhlaWdodD0iMTgwIiB2aWV3Qm94PSIwIDAgMjgwIDE4MCI+PHJlY3QgZmlsbD0iIzExMSIgd2lkdGg9IjI4MCIgaGVpZ2h0PSIxODAiLz48dGV4dCB4PSIxNDAiIHk9IjkwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMzM2NmZmIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiPlByb2plY3QgMTwvdGV4dD48L3N2Zz4=',
+                    title: 'todo',
+                    description: 'todo',
+                    href: 'https://github.com/nnmarcoo'
+                },
+                {
+                    image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyODAiIGhlaWdodD0iMTgwIiB2aWV3Qm94PSIwIDAgMjgwIDE4MCI+PHJlY3QgZmlsbD0iIzExMSIgd2lkdGg9IjI4MCIgaGVpZ2h0PSIxODAiLz48dGV4dCB4PSIxNDAiIHk9IjkwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMzM2NmZmIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiPlByb2plY3QgMjwvdGV4dD48L3N2Zz4=',
+                    title: 'todo',
+                    description: 'todo',
+                    href: 'https://github.com/nnmarcoo'
+                },
+                {
+                    image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyODAiIGhlaWdodD0iMTgwIiB2aWV3Qm94PSIwIDAgMjgwIDE4MCI+PHJlY3QgZmlsbD0iIzExMSIgd2lkdGg9IjI4MCIgaGVpZ2h0PSIxODAiLz48dGV4dCB4PSIxNDAiIHk9IjkwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMzM2NmZmIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiPlByb2plY3QgMzwvdGV4dD48L3N2Zz4=',
+                    title: 'todo',
+                    description: 'todo',
+                    href: 'https://github.com/nnmarcoo'
+                },
+                {
+                    image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyODAiIGhlaWdodD0iMTgwIiB2aWV3Qm94PSIwIDAgMjgwIDE4MCI+PHJlY3QgZmlsbD0iIzExMSIgd2lkdGg9IjI4MCIgaGVpZ2h0PSIxODAiLz48dGV4dCB4PSIxNDAiIHk9IjkwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMzM2NmZmIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiPlByb2plY3QgNDwvdGV4dD48L3N2Zz4=',
+                    title: 'todo',
+                    description: 'todo',
+                    href: 'https://github.com/nnmarcoo'
+                }
+            ],
             contact: [{
                     icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0xMiAwQzUuMzcgMCAwIDUuMzcgMCAxMmMwIDUuMzEgMy40MzUgOS43OTUgOC4yMDUgMTEuMzg1LjYuMTA1LjgyNS0uMjU1LjgyNS0uNTcgMC0uMjg1LS4wMTUtMS4yMy0uMDE1LTIuMjM1LTMuMDE1LjU1NS0zLjc5NS0uNzM1LTQuMDM1LTEuNDEtLjEzNS0uMzQ1LS43Mi0xLjQxLTEuMjMtMS42OTUtLjQyLS4yMjUtMS4wMi0uNzgtLjAxNS0uNzk1Ljk0NS0uMDE1IDEuNjIuODcgMS44NDUgMS4yMyAxLjA4IDEuODE1IDIuODA1IDEuMzA1IDMuNDk1Ljk5LjEwNS0uNzguNDItMS4zMDUuNzY1LTEuNjA1LTIuNjctLjMtNS40Ni0xLjMzNS01LjQ2LTUuOTI1IDAtMS4zMDUuNDY1LTIuMzg1IDEuMjMtMy4yMjUtLjEyLS4zLS41NC0xLjUzLjEyLTMuMTggMCAwIDEuMDA1LS4zMTUgMy4zIDEuMjMuOTYtLjI3IDEuOTgtLjQwNSAzLS40MDVzMi4wNC4xMzUgMyAuNDA1YzIuMjk1LTEuNTYgMy4zLTEuMjMgMy4zLTEuMjMuNjYgMS42NS4yNCAyLjg4LjEyIDMuMTguNzY1Ljg0IDEuMjMgMS45MDUgMS4yMyAzLjIyNSAwIDQuNjA1LTIuODA1IDUuNjI1LTUuNDc1IDUuOTI1LjQzNS4zNzUuODEgMS4wOTUuODEgMi4yMiAwIDEuNjA1LS4wMTUgMi44OTUtLjAxNSAzLjMgMCAuMzE1LjIyNS42OS44MjUuNTdBMTIuMDIgMTIuMDIgMCAwIDAgMjQgMTJjMC02LjYzLTUuMzctMTItMTItMTJ6Ii8+PC9zdmc+',
                     size: 36,
@@ -687,6 +925,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     size: 36,
                     width: 47,
                     href: 'https://discord.com/users/nnmarco'
+                }
+            ],
+            blog: [{
+                    text: 'todo',
+                },
+                {
+                    text: 'todo',
+                },
+                {
+                    text: 'todo',
+                },
+                {
+                    text: 'todo',
+                },
+                {
+                    text: 'todo',
+                },
+                {
+                    text: 'todo',
+                },
+                {
+                    text: 'todo',
                 }
             ]
         }
