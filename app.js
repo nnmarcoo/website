@@ -97,11 +97,14 @@ class Portfolio {
       uniform sampler2D t;
       uniform vec2 r,m;
       uniform float time,i,b,rad,dsp,spl,tr;
+
       void main(){
         vec2 px = v * r;
         vec2 d = px - m;
         float dist = length(d);
-        float s = max(0., 1. - dist / rad);
+
+        float f = dist / rad;
+        float s = f >= 1.0 ? 0.0 : 1.0 - f * f * (3.0 - 2.0 * f);
 
         if (s <= 0.) {
           gl_FragColor = vec4(texture2D(t, v).rgb, 1.);
