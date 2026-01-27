@@ -4,6 +4,20 @@ class Portfolio {
     static FONT = '"Space Grotesk", sans-serif';
     static DURATION = 600;
 
+    static EFFECT_RADIUS = 200;
+    static WAVE_FREQ = 0.03;
+    static DISPLACEMENT = 4;
+    static CHROMA_SPLIT = 2;
+    static CORE_RADIUS = 0.4;
+    static CORE_BLOCK_MULT = 2.0;
+    static CORRUPT_CHANCE = 0.5;
+    static KNOCKOUT_CHANCE = 0.25;
+    static SCRAMBLE_DIST = 8.0;
+    static TINT_R = [0.2, 0.4, 1.0];
+    static TINT_G = [0.3, 0.8, 1.0];
+    static TINT_B = [0.5, 0.6, 1.0];
+    static SCRAMBLE_TINT = [0.3, 0.5, 1.0];
+
     constructor(id, config) {
         this.canvas = document.getElementById(id);
         this.gl = this.canvas.getContext('webgl');
@@ -96,7 +110,12 @@ class Portfolio {
       varying vec2 v;
       uniform sampler2D t;
       uniform vec2 r,m;
-      uniform float time,i,b,rad,dsp,spl,tr;
+      uniform float time,i,b,rad,dsp,spl,wfreq,coreRad,coreBlock,corruptChance,knockoutChance,scrambleDist;
+      uniform vec3 tintR,tintG,tintB,scrambleTint;
+
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
 
       void main(){
         vec2 px = v * r;
@@ -115,19 +134,34 @@ class Portfolio {
         float dp = dsp * i;
         float sp = spl * i;
         float a = atan(d.y, d.x);
-        float w = sin(dist * .03 + time) * dp * s;
+        float w = sin(dist * wfreq + time) * dp * s;
         vec2 dr = vec2(cos(a), sin(a));
 
         float R = texture2D(t, bl - dr * (w + sp * s) / r).r;
         float G = texture2D(t, bl - dr * w / r).g;
         float B = texture2D(t, bl - dr * (w - sp * s) / r).b;
 
-        gl_FragColor = vec4(
-          R * vec3(.2,.4,1.) +
-          G * vec3(.3,.8,1.) +
-          B * vec3(.5,.6,1.),
-          1.
-        );
+        vec3 col = R * tintR + G * tintG + B * tintB;
+
+        float coreRadius = rad * coreRad;
+        if (dist < coreRadius) {
+          vec2 blockCoord = floor(px / (b * coreBlock));
+          float h = hash(blockCoord);
+          float coreness = 1.0 - dist / coreRadius;
+
+          if (h < corruptChance) {
+            float reveal = coreness;
+            if (h < knockoutChance) {
+              col = mix(col, vec3(0.0), reveal);
+            } else {
+              vec2 scramble = (hash(blockCoord * 1.3) - 0.5) * b * scrambleDist / r;
+              vec3 scrambled = texture2D(t, bl + scramble).rgb * scrambleTint;
+              col = mix(col, scrambled, reveal);
+            }
+          }
+        }
+
+        gl_FragColor = vec4(col, 1.);
       }
     `;
 
@@ -186,7 +220,16 @@ class Portfolio {
             rad: u('rad'),
             dsp: u('dsp'),
             spl: u('spl'),
-            tr: u('tr')
+            wfreq: u('wfreq'),
+            coreRad: u('coreRad'),
+            coreBlock: u('coreBlock'),
+            corruptChance: u('corruptChance'),
+            knockoutChance: u('knockoutChance'),
+            scrambleDist: u('scrambleDist'),
+            tintR: u('tintR'),
+            tintG: u('tintG'),
+            tintB: u('tintB'),
+            scrambleTint: u('scrambleTint')
         };
     }
 
@@ -522,16 +565,26 @@ class Portfolio {
         gl.bindTexture(gl.TEXTURE_2D, this.tex);
         gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, this.offscreen);
 
+        const P = Portfolio;
         gl.useProgram(this.pg);
         gl.uniform2f(this.loc.r, this.canvas.width, this.canvas.height);
         gl.uniform2f(this.loc.m, this.mouse.x * this.dpr, this.mouse.y * this.dpr);
         gl.uniform1f(this.loc.time, this.time);
         gl.uniform1f(this.loc.i, this.intensity);
         gl.uniform1f(this.loc.b, this.block);
-        gl.uniform1f(this.loc.rad, 200 * this.dpr);
-        gl.uniform1f(this.loc.dsp, 4);
-        gl.uniform1f(this.loc.spl, 2);
-        gl.uniform1f(this.loc.tr, this.trans ? 1 : 0);
+        gl.uniform1f(this.loc.rad, P.EFFECT_RADIUS * this.dpr);
+        gl.uniform1f(this.loc.dsp, P.DISPLACEMENT);
+        gl.uniform1f(this.loc.spl, P.CHROMA_SPLIT);
+        gl.uniform1f(this.loc.wfreq, P.WAVE_FREQ);
+        gl.uniform1f(this.loc.coreRad, P.CORE_RADIUS);
+        gl.uniform1f(this.loc.coreBlock, P.CORE_BLOCK_MULT);
+        gl.uniform1f(this.loc.corruptChance, P.CORRUPT_CHANCE);
+        gl.uniform1f(this.loc.knockoutChance, P.KNOCKOUT_CHANCE);
+        gl.uniform1f(this.loc.scrambleDist, P.SCRAMBLE_DIST);
+        gl.uniform3fv(this.loc.tintR, P.TINT_R);
+        gl.uniform3fv(this.loc.tintG, P.TINT_G);
+        gl.uniform3fv(this.loc.tintB, P.TINT_B);
+        gl.uniform3fv(this.loc.scrambleTint, P.SCRAMBLE_TINT);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.posBuf);
         gl.enableVertexAttribArray(this.loc.p);
