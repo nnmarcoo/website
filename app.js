@@ -459,8 +459,10 @@ class Portfolio {
             const i = this.menuItems.indexOf(it);
             if (portrait) {
                 const x = W / 2;
-                const baseY = H * .35;
-                const y = baseY - this.menuItems.length * 30 + 30 + i * 60 - this.menuY * H * .35;
+                const logoBottom = 50 + 24 + 40;
+                const menuHeight = this.menuItems.length * 50;
+                const baseY = logoBottom + menuHeight / 2;
+                const y = baseY - this.menuItems.length * 25 + 25 + i * 50 - this.menuY * (baseY - 50);
                 return {
                     x: x - it.w / 2,
                     y: y - it.size / 2,
@@ -500,8 +502,8 @@ class Portfolio {
 
             if (portrait) {
                 const x = W / 2 + startX + offsetX;
-                const baseY = H * .7;
-                const y = baseY + this.contentY * H * .5;
+                const baseY = H * .75;
+                const y = baseY + this.contentY * H * .4;
                 return {
                     x: x - it.w / 2,
                     y: y - it.size / 2,
@@ -527,8 +529,8 @@ class Portfolio {
 
         if (portrait) {
             const x = W / 2;
-            const baseY = H * .7;
-            const y = baseY - this.contentItems.length * 25 + 25 + i * 50 + this.contentY * H * .5;
+            const baseY = H * .75;
+            const y = baseY - this.contentItems.length * 20 + 20 + i * 40 + this.contentY * H * .4;
             return {
                 x: x - it.w / 2,
                 y: y - it.size / 2,
@@ -572,7 +574,8 @@ class Portfolio {
 
         let startY;
         if (portrait) {
-            const menuBottom = H * 0.35 + this.menuItems.length * 30 + 40;
+            const logoBottom = 50 + 24 + 40;
+            const menuBottom = logoBottom + this.menuItems.length * 50 + 30;
             startY = menuBottom + itemH / 2;
         } else {
             const availableH = H - 80;
@@ -824,6 +827,29 @@ class Portfolio {
         }, {
             passive: false
         });
+
+        let touchStartY = 0;
+        let touchStartScroll = 0;
+
+        this.canvas.addEventListener('touchstart', e => {
+            if (this.section === 'projects' && !this.trans) {
+                touchStartY = e.touches[0].clientY;
+                touchStartScroll = this.projectScrollTarget;
+            }
+        }, {
+            passive: true
+        });
+
+        this.canvas.addEventListener('touchmove', e => {
+            if (this.section === 'projects' && !this.trans) {
+                e.preventDefault();
+                const deltaY = touchStartY - e.touches[0].clientY;
+                const maxScroll = this.getMaxProjectScroll();
+                this.projectScrollTarget = Math.max(0, Math.min(maxScroll, touchStartScroll + deltaY));
+            }
+        }, {
+            passive: false
+        });
     }
 
     getMaxProjectScroll() {
@@ -850,7 +876,8 @@ class Portfolio {
 
         let availableH;
         if (portrait) {
-            const menuBottom = H * 0.35 + this.menuItems.length * 30 + 40;
+            const logoBottom = 50 + 24 + 40;
+            const menuBottom = logoBottom + this.menuItems.length * 50 + 30;
             availableH = H - menuBottom - 40;
         } else {
             availableH = H - 80;
