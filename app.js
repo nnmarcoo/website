@@ -1,5 +1,3 @@
-// todo: the selected section text should be tinted blue
-
 class Portfolio {
     static FONT = '"Space Grotesk", sans-serif';
     static DURATION = 600;
@@ -373,6 +371,7 @@ class Portfolio {
                 text: m.text,
                 size: 36,
                 type: 1,
+                section: m.section,
                 act: () => this.open(m.section)
             })
         );
@@ -410,6 +409,7 @@ class Portfolio {
                     } else {
                         items.push({
                             text: c.text,
+                            segments: c.segments,
                             size: c.fontSize || 28,
                             type: 2,
                             href: c.href,
@@ -432,9 +432,10 @@ class Portfolio {
                 return it;
             }
             this.ctx.font = `bold ${it.size}px ${Portfolio.FONT}`;
+            const text = it.text || (it.segments ? it.segments.map(s => s.text).join('') : '');
             return {
                 ...it,
-                w: this.ctx.measureText(it.text).width
+                w: this.ctx.measureText(text).width
             };
         });
 
@@ -539,7 +540,7 @@ class Portfolio {
             };
         } else {
             const y = H / 2 - this.contentItems.length * 25 + 25 + i * 50;
-            const x = contentCenterX + this.contentX * W * .5;
+            const x = contentCenterX + this.contentX * W;
             return {
                 x: x - it.w / 2,
                 y: y - it.size / 2,
@@ -641,9 +642,30 @@ class Portfolio {
             } else if (it.icon && this.icons[it.icon]) {
                 const iconW = it.width || it.size;
                 ctx.drawImage(this.icons[it.icon], p.rx - iconW / 2, p.ry - it.size / 2, iconW, it.size);
+            } else if (it.segments) {
+                ctx.font = `bold ${it.size}px ${Portfolio.FONT}`;
+                ctx.textAlign = 'left';
+                let offsetX = 0;
+                for (const seg of it.segments) {
+                    ctx.fillStyle = seg.color || '#fff';
+                    ctx.fillText(seg.text, p.x + offsetX, p.ry);
+                    offsetX += ctx.measureText(seg.text).width;
+                }
+                ctx.textAlign = 'center';
             } else if (it.text) {
                 ctx.font = `bold ${it.size}px ${Portfolio.FONT}`;
+                if (it.section && this.highlightPos !== null) {
+                    const idx = this.menuItems.indexOf(it);
+                    const dist = Math.abs(idx - this.highlightPos);
+                    const h = Math.max(0, 1 - dist);
+                    const r = Math.round(255 - (255 - 51) * h);
+                    const g = Math.round(255 - (255 - 102) * h);
+                    ctx.fillStyle = `rgb(${r},${g},255)`;
+                } else {
+                    ctx.fillStyle = '#fff';
+                }
                 ctx.fillText(it.text, p.rx, p.ry);
+                ctx.fillStyle = '#fff';
             }
         }
     }
@@ -683,6 +705,17 @@ class Portfolio {
         this.time += dt;
 
         this.projectScroll += (this.projectScrollTarget - this.projectScroll) * 0.15;
+
+        const targetIdx = this.menuItems.findIndex(it => it.section === this.section);
+        if (targetIdx >= 0) {
+            if (this.highlightPos === null || this.highlightPos === undefined) {
+                this.highlightPos = targetIdx;
+            } else {
+                this.highlightPos += (targetIdx - this.highlightPos) * 0.02;
+            }
+        } else {
+            this.highlightPos = null;
+        }
 
         this.update(now);
 
@@ -910,8 +943,22 @@ document.addEventListener('DOMContentLoaded', () => {
         ],
         sections: {
             about: [{
-                text: 'todo'
-            }],
+                    segments: [{
+                            text: 'I build things that are '
+                        },
+                        {
+                            text: 'useful',
+                            color: '#3366ff'
+                        },
+                        {
+                            text: '.'
+                        }
+                    ]
+                },
+                {
+                    text: 'Sometimes I just build things.'
+                }
+            ],
             projects: [{
                     image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyODAiIGhlaWdodD0iMTgwIiB2aWV3Qm94PSIwIDAgMjgwIDE4MCI+PHJlY3QgZmlsbD0iIzExMSIgd2lkdGg9IjI4MCIgaGVpZ2h0PSIxODAiLz48dGV4dCB4PSIxNDAiIHk9IjkwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjMzM2NmZmIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiPlByb2plY3QgMTwvdGV4dD48L3N2Zz4=',
                     title: 'todo',
