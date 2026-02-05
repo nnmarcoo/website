@@ -30,9 +30,11 @@ class CanvasEffects {
         this.lastTime = 0;
 
         this.particles = [];
+        this.isLight = false;
         this.resize();
         this.initParticles();
         this.bind();
+        this.updateTheme();
 
         requestAnimationFrame(t => this.loop(t));
     }
@@ -136,7 +138,7 @@ class CanvasEffects {
                     const blue = Math.round(136 + intensity * 119);
                     ctx.strokeStyle = `rgb(${136 - intensity * 80}, ${136 - intensity * 50}, ${blue})`;
                 } else {
-                    ctx.strokeStyle = '#888';
+                    ctx.strokeStyle = this.isLight ? '#aaa' : '#888';
                 }
 
                 ctx.beginPath();
@@ -157,7 +159,7 @@ class CanvasEffects {
                 const other = Math.round(255 - intensity * 100);
                 ctx.fillStyle = `rgb(${other}, ${other}, 255)`;
             } else {
-                ctx.fillStyle = '#fff';
+                ctx.fillStyle = this.isLight ? '#333' : '#fff';
             }
 
             ctx.beginPath();
@@ -199,10 +201,19 @@ class CanvasEffects {
         this.adjustParticleCount();
     }
 
+    updateTheme() {
+        this.isLight = document.documentElement.classList.contains('light');
+    }
+
     bind() {
         addEventListener('resize', () => this.resize(), {
             passive: true
         });
+
+        new MutationObserver(() => this.updateTheme()).observe(
+            document.documentElement,
+            { attributes: true, attributeFilter: ['class'] }
+        );
 
         addEventListener('pointermove', e => {
             this.mouse.x = e.clientX;
@@ -221,6 +232,18 @@ class CanvasEffects {
             this.mouse.x = this.mouse.y = -1e4;
         });
     }
+}
+
+/* Theme Toggle */
+
+function initTheme() {
+    const toggle = document.getElementById('theme-toggle');
+    const root = document.documentElement;
+
+    toggle.addEventListener('click', () => {
+        root.classList.toggle('light');
+        localStorage.setItem('theme', root.classList.contains('light') ? 'light' : 'dark');
+    });
 }
 
 /* Navigation */
@@ -273,5 +296,6 @@ function initNav() {
 
 document.addEventListener('DOMContentLoaded', () => {
     new CanvasEffects('canvas');
+    initTheme();
     initNav();
 });
