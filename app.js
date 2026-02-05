@@ -13,6 +13,9 @@ class CanvasEffects {
 
     static EFFECT_RADIUS = 120;
 
+    static PARALLAX_STRENGTH = 30;
+    static PARALLAX_SMOOTHING = 0.08;
+
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
         if (!this.canvas) return;
@@ -22,6 +25,8 @@ class CanvasEffects {
             x: -1e4,
             y: -1e4
         };
+        this.parallax = { x: 0, y: 0 };
+        this.parallaxTarget = { x: 0, y: 0 };
         this.lastTime = 0;
 
         this.particles = [];
@@ -73,6 +78,10 @@ class CanvasEffects {
             if (p.y < 0) p.y = 1;
             else if (p.y > 1) p.y = 0;
         }
+
+        const C = CanvasEffects;
+        this.parallax.x += (this.parallaxTarget.x - this.parallax.x) * C.PARALLAX_SMOOTHING;
+        this.parallax.y += (this.parallaxTarget.y - this.parallax.y) * C.PARALLAX_SMOOTHING;
     }
 
     draw() {
@@ -82,6 +91,8 @@ class CanvasEffects {
         const h = this.cssH;
         const mx = this.mouse.x;
         const my = this.mouse.y;
+        const px = this.parallax.x;
+        const py = this.parallax.y;
 
         ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
         ctx.clearRect(0, 0, w, h);
@@ -102,13 +113,13 @@ class CanvasEffects {
 
         for (let i = 0; i < this.particles.length; i++) {
             const a = this.particles[i];
-            const ax = a.x * w;
-            const ay = a.y * h;
+            const ax = a.x * w + px;
+            const ay = a.y * h + py;
 
             for (let j = i + 1; j < this.particles.length; j++) {
                 const b = this.particles[j];
-                const bx = b.x * w;
-                const by = b.y * h;
+                const bx = b.x * w + px;
+                const by = b.y * h + py;
 
                 const dx = ax - bx;
                 const dy = ay - by;
@@ -136,9 +147,9 @@ class CanvasEffects {
         }
 
         for (const p of this.particles) {
-            const px = p.x * w;
-            const py = p.y * h;
-            const intensity = getIntensity(px, py);
+            const particleX = p.x * w + px;
+            const particleY = p.y * h + py;
+            const intensity = getIntensity(particleX, particleY);
 
             ctx.globalAlpha = p.opacity;
 
@@ -150,7 +161,7 @@ class CanvasEffects {
             }
 
             ctx.beginPath();
-            ctx.arc(px, py, p.size, 0, Math.PI * 2);
+            ctx.arc(particleX, particleY, p.size, 0, Math.PI * 2);
             ctx.fill();
         }
 
@@ -196,6 +207,12 @@ class CanvasEffects {
         addEventListener('pointermove', e => {
             this.mouse.x = e.clientX;
             this.mouse.y = e.clientY;
+
+            const C = CanvasEffects;
+            const centerX = this.cssW / 2;
+            const centerY = this.cssH / 2;
+            this.parallaxTarget.x = ((e.clientX - centerX) / centerX) * C.PARALLAX_STRENGTH;
+            this.parallaxTarget.y = ((e.clientY - centerY) / centerY) * C.PARALLAX_STRENGTH;
         }, {
             passive: true
         });
