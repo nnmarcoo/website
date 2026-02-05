@@ -320,6 +320,8 @@ const PROJECTS = [{
     }
 ];
 
+let collapseExpandedProject = null;
+
 function initProjects() {
     const container = document.querySelector('.project-list');
     let expandedCard = null;
@@ -500,6 +502,8 @@ function initProjects() {
         expandedCard = null;
     };
 
+    collapseExpandedProject = collapse;
+
     PROJECTS.forEach((project, i) => {
         const card = createCard(project, i);
         container.appendChild(card);
@@ -551,6 +555,7 @@ function initNav() {
 
         current.addEventListener('animationend', () => {
             current.classList.remove('exiting');
+            if (collapseExpandedProject) collapseExpandedProject();
             target.classList.add('active');
             transitioning = false;
         }, {
@@ -561,6 +566,7 @@ function initNav() {
     links.forEach(link => {
         link.addEventListener('click', e => {
             e.preventDefault();
+            e.stopPropagation();
             const id = link.dataset.section;
             show(id);
             history.pushState(null, '', `#${id}`);

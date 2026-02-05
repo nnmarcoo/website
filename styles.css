@@ -227,6 +227,7 @@ main {
   border-color: transparent;
   pointer-events: none;
   transform: scale(0.9);
+  transition: none;
 }
 
 .project-card-thumb {
