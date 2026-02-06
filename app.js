@@ -543,6 +543,7 @@ function initNav() {
         const target = document.getElementById(id);
         if (current === target || !target) return;
 
+        document.title = `marco // ${id}`;
         links.forEach(l => l.classList.toggle('active', l.dataset.section === id));
 
         if (!current) {
