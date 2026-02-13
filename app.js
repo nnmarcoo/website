@@ -287,7 +287,7 @@ const PROJECTS = [
     excerpt: "Wi-Fi enabled multiplexed 7-segment display",
     description:
       "An embedded systems project inspired by the Vsauce death clock, featuring 10-digit multiplexed 7-segment displays controlled over Wi-Fi. The system supports remote configuration and real-time updates to the physical display.",
-    tags: ["ESP32", "C++", "Wi-Fi", "GPIO", "Multiplexing", "wip"],
+    tags: ["esp32", "c++", "wi-fi", "gpio", "multiplexing", "wip"],
     github: "https://github.com/nnmarcoo/countdown",
     live: null,
     media: [
