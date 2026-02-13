@@ -268,56 +268,56 @@ function getTagColor(tag) {
     return `--tag-hue: ${hue}`;
 }
 
-const PROJECTS = [{
-        title: 'todo',
-        excerpt: 'todo',
-        description: 'todo',
-        tags: ['todo'],
-        github: 'https://github.com/nnmarcoo',
-        live: null,
-        media: [
-            'https://placehold.co/800x450/222/666?text=Image+1',
-            'https://placehold.co/800x450/333/888?text=Image+2',
-            'https://placehold.co/800x450/444/aaa?text=Image+3'
-        ]
-    },
-    {
-        title: 'todo',
-        excerpt: 'todo',
-        description: 'todo',
-        tags: ['todo'],
-        github: 'https://github.com/nnmarcoo',
-        live: 'https://example.com',
-        media: [
-            'https://placehold.co/800x450/225/88f?text=Slide+A',
-            'https://placehold.co/800x450/252/8f8?text=Slide+B'
-        ]
-    },
-    {
-        title: 'todo',
-        excerpt: 'todo',
-        description: 'todo',
-        tags: ['todo'],
-        github: 'https://github.com/nnmarcoo',
-        live: null,
-        media: [
-            'https://placehold.co/800x450/522/f88?text=Single+Image'
-        ]
-    },
-    {
-        title: 'todo',
-        excerpt: 'todo',
-        description: 'todo',
-        tags: ['todo'],
-        github: 'https://github.com/nnmarcoo',
-        live: 'https://example.com',
-        media: [
-            'https://placehold.co/800x450/111/555?text=1+of+4',
-            'https://placehold.co/800x450/222/666?text=2+of+4',
-            'https://placehold.co/800x450/333/777?text=3+of+4',
-            'https://placehold.co/800x450/444/888?text=4+of+4'
-        ]
-    }
+const PROJECTS = [
+  {
+    title: "bloom",
+    excerpt: "Hardware-accelerated image viewer",
+    description:
+      "A high-performance image viewer built in Rust that uses GPU acceleration for smooth, responsive rendering. The project explores modern graphics pipelines with wgpu and the iced GUI framework, with an emphasis on efficient panning, zooming, and shader-driven image processing.",
+    tags: ["rust", "iced", "wgpu", "wgsl", "bytemuck", "wip"],
+    github: "https://github.com/nnmarcoo/bloom",
+    live: null,
+    media: [
+      "https://placehold.co/800x450/222/666?text=todo",
+    ]
+  },
+
+  {
+    title: "countdown",
+    excerpt: "Wi-Fi enabled multiplexed 7-segment display",
+    description:
+      "An embedded systems project inspired by the Vsauce death clock, featuring 10-digit multiplexed 7-segment displays controlled over Wi-Fi. The system supports remote configuration and real-time updates to the physical display.",
+    tags: ["ESP32", "C++", "Wi-Fi", "GPIO", "Multiplexing", "wip"],
+    github: "https://github.com/nnmarcoo/countdown",
+    live: null,
+    media: [
+      "https://placehold.co/800x450/222/666?text=todo",
+    ]
+  },
+
+  // you can keep or replace the rest later
+  {
+    title: 'todo',
+    excerpt: 'todo',
+    description: 'todo',
+    tags: ['todo'],
+    github: 'https://github.com/nnmarcoo',
+    live: null,
+    media: [
+      "https://placehold.co/800x450/222/666?text=todo",
+    ]
+  },
+  {
+    title: 'todo',
+    excerpt: 'todo',
+    description: 'todo',
+    tags: ['todo'],
+    github: 'https://github.com/nnmarcoo',
+    live: 'https://example.com',
+    media: [
+      "https://placehold.co/800x450/222/666?text=todo",
+    ]
+  }
 ];
 
 let collapseExpandedProject = null;
