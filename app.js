@@ -324,76 +324,63 @@ let collapseExpandedProject = null;
 
 function initProjects() {
     const container = document.querySelector('.project-list');
-    let expandedCard = null;
+    const overlay = document.getElementById('project-overlay');
+    const overlayCard = overlay.querySelector('.overlay-card');
+    let activeProject = null;
 
-    const createCard = (project, index) => {
-        const card = document.createElement('div');
-        card.className = 'project-card';
-        card.dataset.index = index;
-
-        card.innerHTML = `
-            <div class="project-card-thumb">
-                <img src="${project.media[0]}" alt="${project.title}">
-            </div>
-            <div class="project-card-info">
-                <h3>${project.title}</h3>
-                <p>${project.excerpt}</p>
-            </div>
-            <div class="project-expanded">
-                <button class="project-close" aria-label="Close">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
+    const buildOverlayContent = (project) => {
+        overlayCard.innerHTML = `
+            <button class="project-close" aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+            <div class="project-gallery">
+                <div class="project-gallery-media"></div>
+                <button class="gallery-nav gallery-prev">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6"/>
                     </svg>
                 </button>
-                <div class="project-gallery">
-                    <div class="project-gallery-media"></div>
-                    <button class="gallery-nav gallery-prev">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="15 18 9 12 15 6"/>
-                        </svg>
-                    </button>
-                    <button class="gallery-nav gallery-next">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="9 18 15 12 9 6"/>
-                        </svg>
-                    </button>
-                    <div class="gallery-dots"></div>
+                <button class="gallery-nav gallery-next">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </button>
+                <div class="gallery-dots"></div>
+            </div>
+            <div class="project-details">
+                <h2 class="project-title">${project.title}</h2>
+                <p class="project-description">${project.description}</p>
+                <div class="project-tags">
+                    ${project.tags.map(tag => `<span class="project-tag" style="${getTagColor(tag)}">${tag}</span>`).join('')}
                 </div>
-                <div class="project-details">
-                    <h2 class="project-title">${project.title}</h2>
-                    <p class="project-description">${project.description}</p>
-                    <div class="project-tags">
-                        ${project.tags.map(tag => `<span class="project-tag" style="${getTagColor(tag)}">${tag}</span>`).join('')}
-                    </div>
-                    <div class="project-links">
-                        <a href="${project.github}" target="_blank" class="project-link">
-                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-                            GitHub
-                        </a>
-                        ${project.live ? `
-                        <a href="${project.live}" target="_blank" class="project-link secondary">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                                <polyline points="15 3 21 3 21 9"/>
-                                <line x1="10" y1="14" x2="21" y2="3"/>
-                            </svg>
-                            link
-                        </a>
-                        ` : ''}
-                    </div>
+                <div class="project-links">
+                    <a href="${project.github}" target="_blank" class="project-link">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                        GitHub
+                    </a>
+                    ${project.live ? `
+                    <a href="${project.live}" target="_blank" class="project-link secondary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                            <polyline points="15 3 21 3 21 9"/>
+                            <line x1="10" y1="14" x2="21" y2="3"/>
+                        </svg>
+                        link
+                    </a>
+                    ` : ''}
                 </div>
             </div>
         `;
-
-        return card;
     };
 
-    const setupGallery = (card, project) => {
-        const mediaEl = card.querySelector('.project-gallery-media');
-        const prevBtn = card.querySelector('.gallery-prev');
-        const nextBtn = card.querySelector('.gallery-next');
-        const dotsEl = card.querySelector('.gallery-dots');
+    const setupGallery = (project) => {
+        const mediaEl = overlayCard.querySelector('.project-gallery-media');
+        const prevBtn = overlayCard.querySelector('.gallery-prev');
+        const nextBtn = overlayCard.querySelector('.gallery-next');
+        const dotsEl = overlayCard.querySelector('.gallery-dots');
         let currentIndex = 0;
 
         mediaEl.innerHTML = '';
@@ -444,14 +431,12 @@ function initProjects() {
 
         prevBtn.addEventListener('click', e => {
             e.stopPropagation();
-            const newIndex = currentIndex > 0 ? currentIndex - 1 : project.media.length - 1;
-            scrollTo(newIndex);
+            scrollTo(currentIndex > 0 ? currentIndex - 1 : project.media.length - 1);
         });
 
         nextBtn.addEventListener('click', e => {
             e.stopPropagation();
-            const newIndex = currentIndex < project.media.length - 1 ? currentIndex + 1 : 0;
-            scrollTo(newIndex);
+            scrollTo(currentIndex < project.media.length - 1 ? currentIndex + 1 : 0);
         });
 
         mediaEl.addEventListener('scroll', () => {
@@ -463,72 +448,51 @@ function initProjects() {
         });
     };
 
-    const expand = (card) => {
-        if (expandedCard === card) return;
+    const expand = (project) => {
+        activeProject = project;
+        buildOverlayContent(project);
+        setupGallery(project);
+        overlay.classList.add('active');
 
-        const index = parseInt(card.dataset.index, 10);
-        const project = PROJECTS[index];
-
-        if (expandedCard) {
-            expandedCard.classList.remove('expanded');
-        }
-
-        container.querySelectorAll('.project-card').forEach(c => {
-            if (c !== card) {
-                c.classList.add('collapsed');
-            }
+        overlayCard.querySelector('.project-close').addEventListener('click', e => {
+            e.stopPropagation();
+            collapse();
         });
-
-        card.classList.add('expanded');
-        expandedCard = card;
-
-        setupGallery(card, project);
-
-        setTimeout(() => {
-            card.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }, 50);
     };
 
     const collapse = () => {
-        if (!expandedCard) return;
-
-        expandedCard.classList.remove('expanded');
-        container.querySelectorAll('.project-card').forEach(c => {
-            c.classList.remove('collapsed');
-        });
-        expandedCard = null;
+        if (!activeProject) return;
+        activeProject = null;
+        overlay.classList.remove('active');
+        overlay.addEventListener('transitionend', () => {
+            overlayCard.innerHTML = '';
+        }, { once: true });
     };
 
     collapseExpandedProject = collapse;
 
-    PROJECTS.forEach((project, i) => {
-        const card = createCard(project, i);
+    PROJECTS.forEach((project) => {
+        const card = document.createElement('div');
+        card.className = 'project-card';
+        card.innerHTML = `
+            <div class="project-card-thumb">
+                <img src="${project.media[0]}" alt="${project.title}">
+            </div>
+            <div class="project-card-info">
+                <h3>${project.title}</h3>
+                <p>${project.excerpt}</p>
+            </div>
+        `;
         container.appendChild(card);
-
-        card.addEventListener('click', () => {
-            if (card.classList.contains('expanded')) return;
-            expand(card);
-        });
-
-        card.querySelector('.project-close').addEventListener('click', (e) => {
-            e.stopPropagation();
-            collapse();
-        });
+        card.addEventListener('click', () => expand(project));
     });
 
     addEventListener('keydown', e => {
-        if (e.key === 'Escape' && expandedCard) {
-            collapse();
-        }
+        if (e.key === 'Escape' && activeProject) collapse();
     });
 
-    addEventListener('click', e => {
-        if (expandedCard && !expandedCard.contains(e.target)) {
-            collapse();
-        }
+    overlay.addEventListener('click', e => {
+        if (e.target === overlay) collapse();
     });
 }
 

@@ -214,20 +214,8 @@ main {
   gap: 10px;
 }
 
-.project-card:hover:not(.expanded) {
+.project-card:hover {
   transform: translateY(-4px);
-}
-
-.project-card.collapsed {
-  overflow: hidden;
-  max-height: 0;
-  padding: 0;
-  margin: 0;
-  opacity: 0;
-  border-color: transparent;
-  pointer-events: none;
-  transform: scale(0.9);
-  transition: none;
 }
 
 .project-card-thumb {
@@ -256,48 +244,53 @@ main {
   line-height: 1.4;
 }
 
-.project-card.expanded {
-  cursor: default;
-  flex-direction: column;
-  align-items: stretch;
-  padding: 0;
+#project-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  overflow-y: auto;
+}
+
+#project-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.overlay-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
   overflow: hidden;
-  grid-column: 1 / -1;
-  animation: expandIn 0.25s ease;
-}
-
-@keyframes expandIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.project-card.expanded .project-card-thumb,
-.project-card.expanded .project-card-info {
-  display: none;
-}
-
-.project-expanded {
-  display: none;
-}
-
-.project-card.expanded .project-expanded {
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
   position: relative;
 }
 
 @media (min-width: 800px) {
-  .project-card.expanded .project-expanded {
+  .overlay-card {
     flex-direction: row;
-    padding: 0;
-    gap: 0;
+    max-height: 80vh;
   }
+}
+
+@keyframes overlayCardIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+#project-overlay.active .overlay-card {
+  animation: overlayCardIn 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .project-gallery {
@@ -312,10 +305,9 @@ main {
   .project-gallery {
     flex: 1.2;
     aspect-ratio: auto;
-    min-height: 300px;
-    border-radius: 8px;
-    margin: 16px;
-    margin-right: 0;
+    min-height: 0;
+    border-radius: 0;
+    margin: 0;
   }
 }
 
@@ -431,6 +423,7 @@ main {
 
 .project-details {
   padding: 12px;
+  overflow-y: auto;
 }
 
 @media (min-width: 800px) {
@@ -438,8 +431,9 @@ main {
     flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: center;
     padding: 24px;
+    overflow-y: auto;
+    min-width: 0;
   }
 }
 
