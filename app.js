@@ -300,7 +300,7 @@ const PROJECTS = [
   excerpt: "Smart running route generator",
   description:
     "A web app that generates optimized running routes based on user input such as distance and location. Built with an interactive map UI to quickly produce clean loop routes for runners, focusing on usability, responsiveness, and practical route planning.",
-  tags: ["react", "maps", "routing", "web", "fitness"],
+  tags: ["react", "valhalla", "maplibre", "vite", "wip"],
   github: "https://github.com/nnmarcoo/routr",
   live: "https://nnmarcoo.github.io/routr/",
   media: [
