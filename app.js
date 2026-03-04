@@ -278,7 +278,8 @@ const PROJECTS = [
     github: "https://github.com/nnmarcoo/bloom",
     live: null,
     media: [
-      "https://placehold.co/800x450/222/666?text=todo",
+      "https://raw.githubusercontent.com/nnmarcoo/bloom/refs/heads/main/assets/demo/view.png",
+      "https://raw.githubusercontent.com/nnmarcoo/bloom/refs/heads/main/assets/demo/preferences.png",
     ]
   },
 
