@@ -273,10 +273,10 @@ const PROJECTS = [
     title: "bloom",
     excerpt: "Hardware-accelerated image viewer",
     description:
-      "A high-performance image viewer built in Rust that uses GPU acceleration for smooth, responsive rendering. The project explores modern graphics pipelines with wgpu and the iced GUI framework, with an emphasis on efficient panning, zooming, and shader-driven image processing.",
-    tags: ["rust", "iced", "wgpu", "wgsl", "bytemuck", "wip"],
+      "A high-performance image viewer built in Rust that prioritizes image quality and speed. Bloom is capable of rendering billions of pixels using hardware mipmapping from 24 image formats. Bloom removes bloat from existing image viewers, while preserving the best form of useful features.",
+    tags: ["rust", "iced", "wgpu", "wgsl", "wip"],
     github: "https://github.com/nnmarcoo/bloom",
-    live: null,
+    live: "https://github.com/nnmarcoo/bloom/releases/latest",
     media: [
       "https://raw.githubusercontent.com/nnmarcoo/bloom/refs/heads/main/assets/demo/view.png",
       "https://raw.githubusercontent.com/nnmarcoo/bloom/refs/heads/main/assets/demo/preferences.png",
