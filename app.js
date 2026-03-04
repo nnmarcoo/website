@@ -265,7 +265,8 @@ function getTagColor(tag) {
     hash = Math.imul(hash, 3266489909);
     hash ^= hash >>> 16;
     const hue = Math.abs(hash) % 360;
-    return `--tag-hue: ${hue}`;
+    const sat = 45 + (Math.abs(hash >>> 8) % 40);
+    return `--tag-hue: ${hue}; --tag-sat: ${sat}`;
 }
 
 const PROJECTS = [
