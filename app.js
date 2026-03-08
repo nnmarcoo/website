@@ -280,7 +280,7 @@ const PROJECTS = [
     live: "https://github.com/nnmarcoo/bloom/releases/latest",
     media: [
       "https://raw.githubusercontent.com/nnmarcoo/bloom/refs/heads/main/assets/demo/view.png",
-      "https://raw.githubusercontent.com/nnmarcoo/bloom/refs/heads/main/assets/demo/view_kebab.png",
+      "https://raw.githubusercontent.com/nnmarcoo/bloom/refs/heads/main/assets/demo/view_gif.png",
       "https://raw.githubusercontent.com/nnmarcoo/bloom/refs/heads/main/assets/demo/preferences.png",
     ]
   },
