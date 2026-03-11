@@ -420,10 +420,9 @@ function initProjects() {
             dotsEl.appendChild(dot);
         });
 
+        const dots = Array.from(dotsEl.children);
         const updateDots = () => {
-            dotsEl.querySelectorAll('.gallery-dot').forEach((dot, i) => {
-                dot.classList.toggle('active', i === currentIndex);
-            });
+            dots.forEach((dot, i) => dot.classList.toggle('active', i === currentIndex));
         };
 
         const scrollTo = (index) => {
@@ -451,6 +450,25 @@ function initProjects() {
         });
     };
 
+    const lightbox = document.getElementById('image-lightbox');
+    const lightboxImg = document.getElementById('lightbox-img');
+
+    const openLightbox = (src, alt) => {
+        lightboxImg.src = src;
+        lightboxImg.alt = alt;
+        lightbox.classList.add('active');
+    };
+
+    const closeLightbox = () => {
+        lightbox.classList.remove('active');
+    };
+
+    lightbox.addEventListener('click', e => {
+        if (e.target === lightbox) closeLightbox();
+    });
+
+    lightbox.querySelector('.lightbox-close').addEventListener('click', closeLightbox);
+
     const expand = (project) => {
         activeProject = project;
         buildOverlayContent(project);
@@ -461,12 +479,21 @@ function initProjects() {
             e.stopPropagation();
             collapse();
         });
+
+        overlayCard.querySelector('.project-gallery-media').addEventListener('click', e => {
+            const img = e.target.closest('img');
+            if (img) {
+                e.stopPropagation();
+                openLightbox(img.src, img.alt);
+            }
+        });
     };
 
     const collapse = () => {
         if (!activeProject) return;
         activeProject = null;
         overlay.classList.remove('active');
+        closeLightbox();
         overlay.addEventListener('transitionend', () => {
             overlayCard.innerHTML = '';
         }, { once: true });
@@ -491,7 +518,10 @@ function initProjects() {
     });
 
     addEventListener('keydown', e => {
-        if (e.key === 'Escape' && activeProject) collapse();
+        if (e.key === 'Escape') {
+            if (lightbox.classList.contains('active')) closeLightbox();
+            else if (activeProject) collapse();
+        }
     });
 
     overlay.addEventListener('click', e => {

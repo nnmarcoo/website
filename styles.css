@@ -335,6 +335,10 @@ main {
   object-fit: contain;
 }
 
+.project-gallery-media img {
+  cursor: zoom-in;
+}
+
 .gallery-nav {
   position: absolute;
   top: 50%;
@@ -543,6 +547,59 @@ main {
 .project-link.secondary {
   background: var(--card-border);
   color: var(--text);
+}
+
+#image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+#image-lightbox.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#lightbox-img {
+  max-width: 95vw;
+  max-height: 92vh;
+  object-fit: contain;
+  border-radius: 6px;
+  user-select: none;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.1);
+}
+
+.lightbox-close svg {
+  width: 20px;
+  height: 20px;
 }
 
 .contact-links {
