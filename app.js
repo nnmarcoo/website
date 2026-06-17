@@ -11,7 +11,6 @@ const splitLetters = (el, text) => {
   });
 };
 
-/* ============ wordmark: living drift + click-to-drop physics ============ */
 (() => {
   const wm = document.querySelector('.wordmark');
   const letters = splitLetters(wm, 'marco');
@@ -26,123 +25,185 @@ const splitLetters = (el, text) => {
   };
   startDrift();
 
-  let physics = null;
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const STEP = 2;
+  const DOT = 1.5;
+  const SPREAD = 0.45;
+  const DUR = 1.25;
+  const EDGE = 0.18;
+  const INV_EDGE = 1 / EDGE, INV_SPAN = 1 / (1 - SPREAD), HALF_DOT = DOT / 2;
+  const smooth = t => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 
-  const drop = () => {
-    const M = window.Matter;
-    if (!M || physics) return;
+  const sample = (w, h, draw) => {
+    const c = document.createElement('canvas');
+    c.width = Math.ceil(w); c.height = Math.ceil(h);
+    const cx = c.getContext('2d');
+    draw(cx);
+    const data = cx.getImageData(0, 0, c.width, c.height).data, pts = [];
+    for (let y = 0; y < c.height; y += STEP)
+      for (let x = 0; x < c.width; x += STEP)
+        if (data[(y * c.width + x) * 4 + 3] > 128) pts.push([x, y]);
+    return pts;
+  };
+  const centroid = p => {
+    let sx = 0, sy = 0;
+    for (const q of p) { sx += q[0]; sy += q[1]; }
+    return [sx / p.length, sy / p.length];
+  };
+  const shuffle = a => {
+    for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  };
+
+  const SWOOSH = new Path2D('M218.574 124.746L218.574 142.146C131.454 142.146 121.614 168.666 22.254 168.666L22.254 151.266C124.308 151.266 124.174 124.746 218.574 124.746Z');
+  const drawLogo = (c, size, fill = '#fff') => {
+    c.fillStyle = fill;
+    c.scale(size / 240, size / 240);
+    c.fillRect(22.254, 174.786, 196.32, 17.4);
+    c.fill(SWOOSH);
+    const ring = new Path2D();
+    ring.arc(60.153, 106.565, 33.575, 0, Math.PI * 2);
+    ring.arc(60.153, 106.565, 14.975, 0, Math.PI * 2, true);
+    c.fill(ring, 'evenodd');
+  };
+
+  let canvas = null, ctx = null, field = null, placeLogo = null, ink = '#fff';
+  let tween = null, lastT = 0, shown = false, busy = false, onDoc = null;
+
+  const build = () => {
+    const rects = letters.map(l => l.getBoundingClientRect());
+    const rots = letters.map(l => +gsap.getProperty(l, 'rotation') || 0);
+    const left = Math.min(...rects.map(r => r.left)), right = Math.max(...rects.map(r => r.right));
+    const top = Math.min(...rects.map(r => r.top)), bot = Math.max(...rects.map(r => r.bottom));
+    const cx = (left + right) / 2, cy = (top + bot) / 2;
+    const cs = getComputedStyle(wm), F = parseFloat(cs.fontSize);
+    ink = cs.color;
+
+    const pad = F, ox = left - pad, oy = top - pad;
+    const text = sample((right - left) + pad * 2, (bot - top) + pad * 2, c => {
+      c.fillStyle = '#fff';
+      c.textAlign = 'center';
+      c.textBaseline = 'alphabetic';
+      c.font = `${cs.fontWeight} ${F}px ${cs.fontFamily}`;
+      const m = c.measureText('m');
+      const baseY = ((m.fontBoundingBoxAscent || F * 0.8) - (m.fontBoundingBoxDescent || F * 0.2)) / 2;
+      letters.forEach((l, i) => {
+        const r = rects[i];
+        c.save();
+        c.translate(r.left + r.width / 2 - ox, r.top + r.height / 2 - oy);
+        c.rotate(rots[i] * Math.PI / 180);
+        c.fillText('marco'[i], 0, baseY);
+        c.restore();
+      });
+    }).map(p => [ox + p[0], oy + p[1]]);
+
+    const size = (bot - top) * 2, lpad = size * 0.2;
+    const local = sample(size + lpad * 2, size + lpad * 2, c => { c.translate(lpad, lpad); drawLogo(c, size); });
+    const [mx, my] = centroid(local);
+    const logo = local.map(([x, y]) => [x - mx + cx, y - my + cy]);
+    placeLogo = (c, fill) => { c.save(); c.translate(cx - mx + lpad, cy - my + lpad); drawLogo(c, size, fill); c.restore(); };
+
+    shuffle(text); shuffle(logo);
+    const n = Math.max(text.length, logo.length);
+    const ax = new Float32Array(n), ay = new Float32Array(n), dx = new Float32Array(n), dy = new Float32Array(n);
+    const bx = new Float32Array(n), by = new Float32Array(n), dl = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const a = text[i % text.length], b = logo[i % logo.length];
+      const vx = b[0] - a[0], vy = b[1] - a[1], inv = ((Math.random() - 0.5) * 70) / (Math.hypot(vx, vy) || 1);
+      ax[i] = a[0]; ay[i] = a[1]; dx[i] = vx; dy[i] = vy;
+      bx[i] = -vy * inv; by[i] = vx * inv; dl[i] = Math.random() * SPREAD;
+    }
+    field = { n, ax, ay, dx, dy, bx, by, dl };
+  };
+
+  const sizeCanvas = () => {
+    canvas.width = innerWidth * DPR; canvas.height = innerHeight * DPR;
+    canvas.style.width = innerWidth + 'px'; canvas.style.height = innerHeight + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  };
+
+  const render = T => {
+    lastT = T;
+    const partA = Math.min(smooth(T * INV_EDGE), smooth((1 - T) * INV_EDGE));
+    const logoA = smooth((T - 1 + EDGE) * INV_EDGE);
+    wm.style.opacity = 1 - smooth(T * INV_EDGE);
+
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    if (logoA > 0) { ctx.globalAlpha = logoA; placeLogo(ctx, ink); }
+
+    if (partA > 0) {
+      const { n, ax, ay, dx, dy, bx, by, dl } = field;
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        let e = (T - dl[i]) * INV_SPAN;
+        e = e <= 0 ? 0 : e >= 1 ? 1 : e * e * (3 - 2 * e);
+        const ph = 4 * e * (1 - e);
+        ctx.rect(ax[i] + dx[i] * e + bx[i] * ph - HALF_DOT, ay[i] + dy[i] * e + by[i] * ph - HALF_DOT, DOT, DOT);
+      }
+      ctx.globalAlpha = partA;
+      ctx.fillStyle = ink;
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  };
+
+  const teardown = () => { canvas.remove(); canvas = ctx = field = placeLogo = null; };
+
+  const toLogo = () => {
+    if (shown || busy) return;
+    busy = true;
     driftTweens.forEach(t => t.kill());
     gsap.killTweensOf(letters);
+    build();
 
-    const rects = letters.map(l => l.getBoundingClientRect());
-    letters.forEach((l, i) => {
-      const r = rects[i];
-      l._home = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-      const cs = getComputedStyle(l);
-      Object.assign(l.style, {
-        position: 'fixed', left: '0', top: '0', margin: '0', zIndex: '60',
-        userSelect: 'none', webkitUserSelect: 'none',
-        fontSize: cs.fontSize, fontWeight: cs.fontWeight, fontFamily: cs.fontFamily,
-        letterSpacing: cs.letterSpacing, color: cs.color, lineHeight: cs.lineHeight,
-      });
-      document.body.appendChild(l);
-      gsap.set(l, { xPercent: -50, yPercent: -50, x: l._home.x, y: l._home.y, rotation: 0 });
-    });
+    canvas = document.createElement('canvas');
+    canvas.className = 'morph-canvas';
+    ctx = canvas.getContext('2d');
+    document.body.appendChild(canvas);
+    sizeCanvas();
 
-    const W = innerWidth, H = innerHeight;
-    const engine = M.Engine.create();
-    engine.gravity.y = 1.3;
-    const walls = [
-      M.Bodies.rectangle(W / 2, H + 40, W + 400, 80, { isStatic: true }),
-      M.Bodies.rectangle(W / 2, -40, W + 400, 80, { isStatic: true }),
-      M.Bodies.rectangle(-40, H / 2, 80, H * 3, { isStatic: true }),
-      M.Bodies.rectangle(W + 40, H / 2, 80, H * 3, { isStatic: true }),
-    ];
-    const bodies = letters.map((l, i) => {
-      const r = rects[i];
-      const b = M.Bodies.rectangle(l._home.x, l._home.y, r.width, r.height, { restitution: 0.72, friction: 0.4, frictionAir: 0.012 });
-      M.Body.setVelocity(b, { x: rand(-4, 4), y: rand(-7, -1) });
-      M.Body.setAngularVelocity(b, rand(-0.25, 0.25));
-      return b;
-    });
-    M.Composite.add(engine.world, [...walls, ...bodies]);
-
-    const mouse = M.Mouse.create(document.body);
-    const mc = M.MouseConstraint.create(engine, { mouse, constraint: { stiffness: 0.2, render: { visible: false } } });
-    M.Composite.add(engine.world, mc);
-
-    const state = { engine, mouse, stopped: false, onDbl: null, walls, bodies };
-    const tick = () => {
-      if (state.stopped) return;
-      M.Engine.update(engine, 1000 / 60);
-      letters.forEach((l, i) => gsap.set(l, { x: bodies[i].position.x, y: bodies[i].position.y, rotation: bodies[i].angle * 180 / Math.PI }));
-      requestAnimationFrame(tick);
-    };
-    tick();
-
-    state.onDbl = () => {
-      if (window.__isHome && window.__isHome()) recall();
-      else dropOff();
-    };
-    document.addEventListener('dblclick', state.onDbl);
-    physics = state;
-  };
-
-  const stopPhysics = () => {
-    const M = window.Matter;
-    physics.stopped = true;
-    document.removeEventListener('dblclick', physics.onDbl);
-    const m = physics.mouse;
-    m.element.removeEventListener('mousemove', m.mousemove);
-    m.element.removeEventListener('mousedown', m.mousedown);
-    m.element.removeEventListener('mouseup', m.mouseup);
-    m.element.removeEventListener('touchmove', m.mousemove);
-    m.element.removeEventListener('touchstart', m.mousedown);
-    m.element.removeEventListener('touchend', m.mouseup);
-    M.World.clear(physics.engine.world, false);
-    M.Engine.clear(physics.engine);
-    physics = null;
-  };
-
-  const restoreLetter = l => {
-    Object.assign(l.style, {
-      position: '', left: '', top: '', margin: '', zIndex: '',
-      userSelect: '', webkitUserSelect: '',
-      fontSize: '', fontWeight: '', fontFamily: '', letterSpacing: '', color: '', lineHeight: '',
-    });
-    wm.appendChild(l);
-    gsap.set(l, { clearProps: 'transform' });
-  };
-
-  const recall = () => {
-    if (!physics) return;
-    stopPhysics();
-    letters.forEach((l, i) => {
-      gsap.to(l, {
-        x: l._home.x, y: l._home.y, rotation: 0, duration: 0.6, ease: 'power3.inOut',
-        onComplete: () => { restoreLetter(l); if (i === letters.length - 1) startDrift(); },
-      });
+    const o = { t: 0 };
+    render(0);
+    tween = gsap.to(o, {
+      t: 1, duration: DUR, ease: 'none', onUpdate: () => render(o.t),
+      onComplete: () => {
+        busy = false; shown = true;
+        onDoc = e => { if (!e.target.closest('.cluster, #adv-chev')) toWord(); };
+        document.addEventListener('click', onDoc);
+      },
     });
   };
 
-  const dropOff = () => {
-    if (!physics) return;
-    const M = window.Matter;
-    const bodies = physics.bodies;
-    M.Composite.remove(physics.engine.world, physics.walls);
-    bodies.forEach(b => M.Body.setVelocity(b, { x: rand(-3, 3), y: 16 }));
-    setTimeout(() => {
-      if (!physics || physics.bodies !== bodies) return;
-      stopPhysics();
-      letters.forEach(restoreLetter);
-      startDrift();
-    }, 1600);
+  const toWord = () => {
+    if (!shown || busy) return;
+    busy = true; shown = false;
+    document.removeEventListener('click', onDoc); onDoc = null;
+    const o = { t: 1 };
+    tween = gsap.to(o, {
+      t: 0, duration: DUR * 0.85, ease: 'none', onUpdate: () => render(o.t),
+      onComplete: () => { wm.style.opacity = ''; teardown(); busy = false; startDrift(); },
+    });
   };
 
-  wm.addEventListener('click', drop);
+  const dismiss = () => {
+    if (!shown && !busy) return;
+    if (tween) tween.kill();
+    if (onDoc) { document.removeEventListener('click', onDoc); onDoc = null; }
+    shown = busy = false;
+    if (canvas) {
+      const c = canvas;
+      canvas = ctx = field = placeLogo = null;
+      gsap.to(c, { opacity: 0, duration: 0.3, ease: 'power2.out', onComplete: () => c.remove() });
+    }
+    wm.style.opacity = '';
+    startDrift();
+  };
+
+  addEventListener('resize', () => { if (canvas) { sizeCanvas(); render(lastT); } });
+  wm.addEventListener('click', toLogo);
+  window.__morphDismiss = dismiss;
 })();
 
-/* ============ navigation, labels, sections ============ */
 (() => {
   const layer = document.querySelector('.label-layer');
   const GAP = 20;
@@ -439,6 +500,7 @@ const splitLetters = (el, text) => {
   };
 
   const select = node => {
+    window.__morphDismiss && window.__morphDismiss();
     if (selected === node) { goHome(); return; }
     const prev = selected;
     selected = node;

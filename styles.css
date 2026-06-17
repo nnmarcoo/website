@@ -117,6 +117,14 @@ body::after {
 }
 .wordmark .ltr { display: inline-block; will-change: transform; }
 
+/* ============ marco -> logo morph overlay ============ */
+.morph-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
 /* ============ persistent "next" chevron ============ */
 #adv-chev {
   position: absolute;
