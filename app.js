@@ -15,6 +15,8 @@ const splitLetters = (el, text) => {
   const wm = document.querySelector('.wordmark');
   const letters = splitLetters(wm, 'marco');
 
+  if (window.matchMedia('(max-width: 640px)').matches) return;
+
   let driftTweens = [];
   const startDrift = () => {
     driftTweens = letters.map((l, i) => gsap.to(l, {
@@ -206,6 +208,7 @@ const splitLetters = (el, text) => {
 })();
 
 (() => {
+  const MOBILE = window.matchMedia('(max-width: 640px)').matches;
   const layer = document.querySelector('.label-layer');
   const GAP = 20;
   const FS = 26;
@@ -256,7 +259,7 @@ const splitLetters = (el, text) => {
   window.__isHome = () => selected === null;
   const shapeRestX = node => (node === selected ? HALF : 0);
 
-  nodes.forEach(node => {
+  if (!MOBILE) nodes.forEach(node => {
     const c = node.style.getPropertyValue('--c').trim() || '#ffffff';
     const a = makeLetter(node.dataset.label[0]);
     a.atHome = true;
@@ -281,8 +284,10 @@ const splitLetters = (el, text) => {
       if (a.atHome) gsap.set(a.el, { x: a.home.x, y: a.home.y });
     });
   };
-  placeAnchorsHome();
-  document.fonts?.ready.then(placeAnchorsHome);
+  if (!MOBILE) {
+    placeAnchorsHome();
+    document.fonts?.ready.then(placeAnchorsHome);
+  }
 
   const wordmark = document.querySelector('.wordmark');
   const home = document.querySelector('.home');
@@ -470,8 +475,10 @@ const splitLetters = (el, text) => {
     content.querySelectorAll('.contacts a').forEach(el => hoverPop(el));
     if (node.dataset.label === 'projects') mountProjects();
     content.classList.add('active');
-    home.style.pointerEvents = 'none';
-    gsap.to(home, { opacity: 0, duration: 0.3, ease: 'power2.out' });
+    if (!MOBILE) {
+      home.style.pointerEvents = 'none';
+      gsap.to(home, { opacity: 0, duration: 0.3, ease: 'power2.out' });
+    }
     gsap.killTweensOf(content);
     gsap.fromTo(content, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'power2.out' });
   };
@@ -481,8 +488,10 @@ const splitLetters = (el, text) => {
     content.classList.remove('active');
     gsap.killTweensOf(content);
     gsap.to(content, { opacity: 0, duration: 0.25, ease: 'power2.in', onComplete: () => { content.classList.remove('wide'); content.innerHTML = ''; } });
-    home.style.pointerEvents = '';
-    gsap.to(home, { opacity: 1, duration: 0.45, delay: 0.05, ease: 'power2.out' });
+    if (!MOBILE) {
+      home.style.pointerEvents = '';
+      gsap.to(home, { opacity: 1, duration: 0.45, delay: 0.05, ease: 'power2.out' });
+    }
   };
 
   const moveSquare = n => {
@@ -496,6 +505,7 @@ const splitLetters = (el, text) => {
     const prev = selected;
     if (!prev) return;
     selected = null;
+    if (MOBILE) { prev.classList.remove('sel'); hideContent(); return; }
     setAdv('about');
     moveSquare(prev);
     if (!prev.anchor.atHome) transitionTo(prev);
@@ -503,6 +513,15 @@ const splitLetters = (el, text) => {
   };
 
   const select = node => {
+    if (MOBILE) {
+      if (selected === node) { goHome(); return; }
+      if (selected) selected.classList.remove('sel');
+      selected = node;
+      node.classList.add('sel');
+      showContent(node);
+      content.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
+    }
     window.__morphDismiss && window.__morphDismiss();
     if (selected === node) { goHome(); return; }
     const prev = selected;
@@ -593,18 +612,20 @@ const splitLetters = (el, text) => {
   nodes.forEach(node => {
     const shapeEl = node.querySelector('.shape');
     shapeEl.style.setProperty('--ga', `${Math.round(rand(0, 360))}deg`);
-    node.addEventListener('mouseenter', () => {
-      const rot = rand(3, 7) * (Math.random() < 0.5 ? -1 : 1);
-      gsap.to(shapeEl, { rotation: rot, scale: 1.06, x: shapeRestX(node) - 4, duration: 0.45, ease: 'back.out(2.6)' });
-      transitionTo(node);
-    });
-    node.addEventListener('mouseleave', () => {
-      gsap.to(shapeEl, { rotation: 0, scale: 1, x: shapeRestX(node), duration: 0.45, ease: 'power3.out' });
-    });
+    if (!MOBILE) {
+      node.addEventListener('mouseenter', () => {
+        const rot = rand(3, 7) * (Math.random() < 0.5 ? -1 : 1);
+        gsap.to(shapeEl, { rotation: rot, scale: 1.06, x: shapeRestX(node) - 4, duration: 0.45, ease: 'back.out(2.6)' });
+        transitionTo(node);
+      });
+      node.addEventListener('mouseleave', () => {
+        gsap.to(shapeEl, { rotation: 0, scale: 1, x: shapeRestX(node), duration: 0.45, ease: 'power3.out' });
+      });
+    }
     node.addEventListener('click', () => select(node));
   });
 
-  document.querySelector('.cluster').addEventListener('mouseleave', clearAll);
+  if (!MOBILE) document.querySelector('.cluster').addEventListener('mouseleave', clearAll);
 
   const sectionKeys = { a: 'about', p: 'projects', b: 'blog' };
   addEventListener('keydown', e => {
