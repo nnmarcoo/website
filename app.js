@@ -151,6 +151,7 @@ const splitLetters = (el, text) => {
 
   const toLogo = () => {
     if (shown || busy) return;
+    if (window.__isHome && !window.__isHome()) return;
     busy = true;
     driftTweens.forEach(t => t.kill());
     gsap.killTweensOf(letters);
@@ -469,6 +470,7 @@ const splitLetters = (el, text) => {
     content.querySelectorAll('.contacts a').forEach(el => hoverPop(el));
     if (node.dataset.label === 'projects') mountProjects();
     content.classList.add('active');
+    home.style.pointerEvents = 'none';
     gsap.to(home, { opacity: 0, duration: 0.3, ease: 'power2.out' });
     gsap.killTweensOf(content);
     gsap.fromTo(content, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'power2.out' });
@@ -479,6 +481,7 @@ const splitLetters = (el, text) => {
     content.classList.remove('active');
     gsap.killTweensOf(content);
     gsap.to(content, { opacity: 0, duration: 0.25, ease: 'power2.in', onComplete: () => { content.classList.remove('wide'); content.innerHTML = ''; } });
+    home.style.pointerEvents = '';
     gsap.to(home, { opacity: 1, duration: 0.45, delay: 0.05, ease: 'power2.out' });
   };
 
