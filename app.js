@@ -476,9 +476,9 @@ const splitLetters = (el, text) => {
 
   const hideContent = () => {
     document.title = 'marco';
-    content.classList.remove('active', 'wide');
+    content.classList.remove('active');
     gsap.killTweensOf(content);
-    gsap.to(content, { opacity: 0, duration: 0.25, ease: 'power2.in', onComplete: () => { content.innerHTML = ''; } });
+    gsap.to(content, { opacity: 0, duration: 0.25, ease: 'power2.in', onComplete: () => { content.classList.remove('wide'); content.innerHTML = ''; } });
     gsap.to(home, { opacity: 1, duration: 0.45, delay: 0.05, ease: 'power2.out' });
   };
 
