@@ -40,7 +40,7 @@ body::after {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  z-index: 10;
+  z-index: 51;
 }
 
 .node {
@@ -75,7 +75,7 @@ body::after {
 }
 
 /* ============ shared letter layer ============ */
-.label-layer { position: absolute; inset: 0; pointer-events: none; z-index: 11; }
+.label-layer { position: absolute; inset: 0; pointer-events: none; z-index: 51; }
 .label-layer .ltr {
   position: absolute;
   top: 0; left: 0;
