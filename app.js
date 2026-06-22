@@ -212,6 +212,7 @@ const splitLetters = (el, text) => {
   const layer = document.querySelector('.label-layer');
   const GAP = 20;
   const FS = 26;
+  const opticalY = ch => (/[pgjqy]/.test(ch) ? -4 : -2);
 
   const meas = document.createElement('span');
   meas.className = 'ltr measurer';
@@ -279,7 +280,7 @@ const splitLetters = (el, text) => {
       const a = node.anchor, b = node._base;
       a.home = {
         x: b.x + (b.w - widthOf(a.ch)) / 2 + shapeRestX(node),
-        y: b.y + (b.h - FS) / 2,
+        y: b.y + (b.h - FS) / 2 + opticalY(a.ch),
       };
       if (a.atHome) gsap.set(a.el, { x: a.home.x, y: a.home.y });
     });
@@ -555,7 +556,7 @@ const splitLetters = (el, text) => {
 
     const b = node._base;
     const anchorX = b.x + b.w + shapeRestX(node) + GAP;
-    const posY = b.y + (b.h - FS) / 2;
+    const posY = b.y + (b.h - FS) / 2 + opticalY(word[0]);
 
     const slots = [];
     let cursor = anchorX;
