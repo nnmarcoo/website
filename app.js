@@ -472,6 +472,8 @@ const splitLetters = (el, text) => {
       view.querySelector('.pd-next').addEventListener('click', () => showDetail((idx + 1) % N, 1));
       view.querySelectorAll('.pd-num').forEach(b =>
         b.addEventListener('click', () => { const t = +b.dataset.i; if (t !== idx) showDetail(t, t > idx ? 1 : -1); }));
+      view.querySelectorAll('.pd-back, .pd-cy, .pd-num').forEach(el => hoverPop(el));
+      view.querySelectorAll('.mlink').forEach(el => hoverPop(el));
       setupGallery(view);
       const inner = [view.querySelector('.pd-figure'), ...view.querySelectorAll('.pd-title, .pd-desc, .chips, .pd-links')];
       gsap.from(inner, { opacity: 0, x: 26 * dir, duration: 0.4, ease: 'power3.out', stagger: 0.05 });

@@ -133,7 +133,7 @@ body::after {
   position: absolute;
   left: 50%; top: 50%;
   transform: translate(calc(min(680px, 82vw) / 2 - 40px), 96px);
-  z-index: 6;
+  z-index: 52;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s;
@@ -158,7 +158,7 @@ body::after {
   overflow: visible;
   opacity: 0;
   pointer-events: none;
-  z-index: 5;
+  z-index: 52;
 }
 #content.active { pointer-events: auto; }
 #content.wide { width: min(880px, 92vw); }
@@ -301,10 +301,10 @@ body::after {
   font-size: 12px; font-weight: 700;
   text-decoration: none;
   background: var(--accent); color: #fff;
-  transition: transform 0.2s, opacity 0.2s;
+  border: 1px solid transparent;
+  transition: opacity 0.2s;
 }
-.mlink.secondary { background: #ffffff14; color: var(--ink); }
-.mlink:hover { transform: translateY(-2px); }
+.mlink.secondary { background: #1b1f24; border: 1px solid #ffffff1f; color: var(--ink); }
 .mlink svg { width: 16px; height: 16px; }
 
 /* ---- gallery ---- */
