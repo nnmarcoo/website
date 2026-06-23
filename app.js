@@ -208,6 +208,8 @@ const splitLetters = (el, text) => {
 })();
 
 (() => {
+  gsap.defaults({ overwrite: 'auto' });
+
   const MOBILE = window.matchMedia('(max-width: 640px)').matches;
   const layer = document.querySelector('.label-layer');
   const GAP = 20;
@@ -217,7 +219,12 @@ const splitLetters = (el, text) => {
   const meas = document.createElement('span');
   meas.className = 'ltr measurer';
   layer.appendChild(meas);
-  const widthOf = ch => { meas.textContent = ch; return meas.offsetWidth; };
+  const widthCache = new Map();
+  const widthOf = ch => {
+    let w = widthCache.get(ch);
+    if (w === undefined) { meas.textContent = ch; w = meas.offsetWidth; widthCache.set(ch, w); }
+    return w;
+  };
 
   let active = [];
 
@@ -268,6 +275,7 @@ const splitLetters = (el, text) => {
     a.homeColor = darken(c, 0.5);
     a.el.style.color = a.homeColor;
     gsap.set(a.gly, { opacity: 1 });
+    a.node = node;
     node.anchor = a;
 
     const lr = layer.getBoundingClientRect();
@@ -275,22 +283,26 @@ const splitLetters = (el, text) => {
     node._base = { x: sr.left - lr.left, y: sr.top - lr.top, w: sr.width, h: sr.height };
   });
 
+  const homeFor = node => {
+    const a = node.anchor, b = node._base;
+    return {
+      x: b.x + (b.w - widthOf(a.ch)) / 2 + shapeRestX(node),
+      y: b.y + (b.h - FS) / 2 + opticalY(a.ch),
+    };
+  };
+
   const placeAnchorsHome = () => {
     nodes.forEach(node => {
-      const a = node.anchor, b = node._base;
-      a.home = {
-        x: b.x + (b.w - widthOf(a.ch)) / 2 + shapeRestX(node),
-        y: b.y + (b.h - FS) / 2 + opticalY(a.ch),
-      };
+      const a = node.anchor;
+      a.home = homeFor(node);
       if (a.atHome) gsap.set(a.el, { x: a.home.x, y: a.home.y });
     });
   };
   if (!MOBILE) {
     placeAnchorsHome();
-    document.fonts?.ready.then(placeAnchorsHome);
+    document.fonts?.ready.then(() => { widthCache.clear(); placeAnchorsHome(); });
   }
 
-  const wordmark = document.querySelector('.wordmark');
   const home = document.querySelector('.home');
   const content = document.getElementById('content');
 
@@ -496,10 +508,15 @@ const splitLetters = (el, text) => {
   };
 
   const moveSquare = n => {
-    gsap.to(n.querySelector('.shape'), { x: shapeRestX(n), duration: 0.45, ease: 'back.out(2)' });
+    const shape = n.querySelector('.shape');
+    gsap.killTweensOf(shape, 'x');
+    gsap.to(shape, { x: shapeRestX(n), duration: 0.45, ease: 'back.out(2)' });
     const a = n.anchor;
-    a.home.x = n._base.x + (n._base.w - widthOf(a.ch)) / 2 + shapeRestX(n);
-    if (a.atHome) gsap.to(a.el, { x: a.home.x, duration: 0.45, ease: 'back.out(2)' });
+    a.home = homeFor(n);
+    if (a.atHome) {
+      gsap.killTweensOf(a.el);
+      gsap.to(a.el, { x: a.home.x, duration: 0.45, ease: 'back.out(2)' });
+    }
   };
 
   const goHome = () => {
@@ -529,13 +546,13 @@ const splitLetters = (el, text) => {
     selected = node;
     if (prev) moveSquare(prev);
     moveSquare(node);
-    if (!node.anchor.atHome) transitionTo(node);
+    transitionTo(node);
     showContent(node);
   };
 
   const sendAnchorHome = a => {
-    if (a.atHome) return;
     a.atHome = true;
+    a.home = homeFor(a.node);
     if (a.twitch) a.twitch.kill();
     gsap.killTweensOf(a.el); gsap.killTweensOf(a.gly);
     gsap.to(a.el, { x: a.home.x, y: a.home.y, color: a.homeColor, duration: rand(0.45, 0.7), ease: 'power3.inOut' });
@@ -605,6 +622,7 @@ const splitLetters = (el, text) => {
   };
 
   const clearAll = () => {
+    if (selected) { transitionTo(selected); return; }
     active.forEach(exit);
     active = [];
     nodes.forEach(n => sendAnchorHome(n.anchor));
