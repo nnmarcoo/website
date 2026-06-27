@@ -8,39 +8,124 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <style>
+    #wipe { position: fixed; inset: 0; z-index: 9999; pointer-events: none; }
+    #wipe .pane {
+      position: absolute; left: 0; right: 0; height: 70%;
+      background: #0a0a0b;
+      transition: transform 0.4s cubic-bezier(0.5, 0, 0.2, 1);
+    }
+    #wipe .pane.top {
+      top: 0;
+      -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent);
+      mask-image: linear-gradient(to bottom, #000 72%, transparent);
+    }
+    #wipe .pane.bot {
+      bottom: 0;
+      -webkit-mask-image: linear-gradient(to top, #000 72%, transparent);
+      mask-image: linear-gradient(to top, #000 72%, transparent);
+    }
+    #wipe.go .pane.top { transform: translateY(-100%); }
+    #wipe.go .pane.bot { transform: translateY(100%); }
+    @media (prefers-reduced-motion: reduce) {
+      #wipe .pane { transition: none; }
+    }
+  </style>
+  <script>
+    (function () {
+      var query = '(pointer: coarse) and (hover: none), (max-width: 1000px)';
+      var isMobile = function () { return matchMedia(query).matches; };
+      window.__isMobile = isMobile;
+
+      var mobile = isMobile();
+      var css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = mobile ? 'mobile.css' : 'styles.css';
+      document.head.appendChild(css);
+
+      var timer, mq = matchMedia(query);
+      var onChange = function () {
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+          if (mq.matches !== mobile) location.reload();
+        }, 250);
+      };
+      mq.addEventListener ? mq.addEventListener('change', onChange) : mq.addListener(onChange);
+
+      window.__loadSite = function () {
+        function script(src, cb) {
+          var s = document.createElement('script');
+          s.src = src;
+          if (cb) s.onload = cb;
+          document.body.appendChild(s);
+        }
+        if (mobile) {
+          script('mobile.js');
+        } else {
+          script('https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js', function () {
+            script('app.js');
+          });
+        }
+      };
+    })();
+  </script>
 </head>
 <body>
-  <div class="stage">
-    <nav class="cluster">
-      <div class="node" data-label="about" style="--c:#0084be"><div class="shape square"></div></div>
-      <div class="node" data-label="projects" style="--c:#0084be"><div class="shape square"></div></div>
-      <div class="node" data-label="blog" style="--c:#0084be"><div class="shape square"></div></div>
-    </nav>
+  <div id="wipe">
+    <div class="pane top"></div>
+    <div class="pane bot"></div>
+  </div>
 
-    <div class="label-layer"></div>
+  <template id="desktop-markup">
+    <div class="stage">
+      <nav class="cluster">
+        <div class="node" data-label="about" style="--c:#0084be"><div class="shape square"></div></div>
+        <div class="node" data-label="projects" style="--c:#0084be"><div class="shape square"></div></div>
+        <div class="node" data-label="blog" style="--c:#0084be"><div class="shape square"></div></div>
+      </nav>
 
-    <div class="home">
-      <div class="wordmark" aria-label="marco"></div>
+      <div class="label-layer"></div>
+
+      <div class="home">
+        <div class="wordmark" aria-label="marco"></div>
+      </div>
+
+      <div id="content"></div>
+
+      <div id="adv-chev">
+        <button class="adv-btn" aria-label="Next section">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
     </div>
 
-    <div id="content"></div>
-
-    <div id="adv-chev">
-      <button class="adv-btn" aria-label="Next section">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    <div id="lightbox">
+      <button class="lb-close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
+      <div class="lb-media"></div>
     </div>
-  </div>
+  </template>
 
-  <div id="lightbox">
-    <button class="lb-close" aria-label="Close">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-    <div class="lb-media"></div>
-  </div>
+  <script>
+    (function () {
+      if (!window.__isMobile()) {
+        document.body.appendChild(document.getElementById('desktop-markup').content.cloneNode(true));
+      }
+      window.__loadSite();
 
-  <script src="app.js"></script>
+      var wipe = document.getElementById('wipe');
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        wipe.remove();
+        return;
+      }
+      wipe.addEventListener('transitionend', function (e) {
+        if (e.target.classList.contains('pane')) wipe.remove();
+      });
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { wipe.classList.add('go'); });
+      });
+    })();
+  </script>
 </body>
 </html>

@@ -1,0 +1,114 @@
+:root {
+  --bg: #0a0a0b;
+  --ink: #f2efe9;
+  --muted: #7a7670;
+  --accent: #0084be;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Martian Mono', ui-monospace, monospace;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: radial-gradient(var(--ink) 1px, transparent 1px);
+  background-size: 4px 4px;
+  z-index: 50;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 22px;
+  max-width: 360px;
+  width: 100%;
+}
+
+.card .wordmark {
+  display: flex;
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: -2px;
+  line-height: 1;
+  user-select: none;
+}
+
+.card .wordmark .ltr {
+  display: inline-block;
+  white-space: pre;
+  will-change: transform;
+  animation-name: drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+@keyframes drift {
+  from { transform: translateY(0) rotate(0); }
+  to   { transform: translateY(var(--y)) rotate(var(--rot)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card .wordmark .ltr { animation: none; }
+}
+
+.card .tagline {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 300px;
+}
+
+.card .links {
+  display: flex;
+  gap: 26px;
+  margin-top: 4px;
+}
+
+.card .links a {
+  width: 30px;
+  height: 30px;
+  color: var(--ink);
+  transition: color 0.2s, transform 0.2s;
+}
+
+.card .links a:active { color: var(--accent); transform: scale(0.9); }
+.card .links svg { width: 100%; height: 100%; }
+
+.desktop-hint {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  text-align: center;
+  font-size: 10px;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  opacity: 0.6;
+  pointer-events: none;
+  user-select: none;
+}
