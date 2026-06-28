@@ -274,11 +274,16 @@ const splitLetters = (el, text) => {
     gsap.set(a.gly, { opacity: 1 });
     a.node = node;
     node.anchor = a;
-
-    const lr = layer.getBoundingClientRect();
-    const sr = node.querySelector('.shape').getBoundingClientRect();
-    node._base = { x: sr.left - lr.left, y: sr.top - lr.top, w: sr.width, h: sr.height };
   });
+
+  const measureBases = () => {
+    const lr = layer.getBoundingClientRect();
+    nodes.forEach(node => {
+      const sr = node.querySelector('.shape').getBoundingClientRect();
+      node._base = { x: sr.left - lr.left, y: sr.top - lr.top, w: sr.width, h: sr.height };
+    });
+  };
+  measureBases();
 
   const homeFor = node => {
     const a = node.anchor, b = node._base;
@@ -297,6 +302,16 @@ const splitLetters = (el, text) => {
   };
   placeAnchorsHome();
   document.fonts?.ready.then(() => { widthCache.clear(); placeAnchorsHome(); });
+
+  let resizeTimer;
+  addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (selected) return;
+      measureBases();
+      placeAnchorsHome();
+    }, 150);
+  });
 
   const home = document.querySelector('.home');
   const content = document.getElementById('content');
@@ -512,13 +527,17 @@ const splitLetters = (el, text) => {
     }
   };
 
+  const resetShape = n =>
+    gsap.to(n.querySelector('.shape'), { rotation: 0, scale: 1, x: shapeRestX(n), duration: 0.45, ease: 'power3.out' });
+  const resetShapeHover = () => nodes.forEach(resetShape);
+
   const goHome = () => {
     const prev = selected;
     if (!prev) return;
     selected = null;
     setAdv('about');
     moveSquare(prev);
-    if (!prev.anchor.atHome) transitionTo(prev);
+    clearAll();
     hideContent();
   };
 
@@ -619,9 +638,7 @@ const splitLetters = (el, text) => {
       gsap.to(shapeEl, { rotation: rot, scale: 1.06, x: shapeRestX(node) - 4, duration: 0.45, ease: 'back.out(2.6)' });
       transitionTo(node);
     });
-    node.addEventListener('mouseleave', () => {
-      gsap.to(shapeEl, { rotation: 0, scale: 1, x: shapeRestX(node), duration: 0.45, ease: 'power3.out' });
-    });
+    node.addEventListener('mouseleave', () => resetShape(node));
     node.addEventListener('click', () => select(node));
   });
 
@@ -635,12 +652,13 @@ const splitLetters = (el, text) => {
       const back = content.querySelector('.pd-back');
       if (back) { back.click(); return; }
       goHome();
+      resetShapeHover();
       return;
     }
     const label = sectionKeys[e.key.toLowerCase()];
     if (label) {
       const target = nodes.find(n => n.dataset.label === label);
-      if (target && selected !== target) select(target);
+      if (target && selected !== target) { select(target); resetShapeHover(); }
     }
   });
 

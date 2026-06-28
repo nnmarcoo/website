@@ -30,11 +30,37 @@
     @media (prefers-reduced-motion: reduce) {
       #wipe .pane { transition: none; }
     }
+    #toosmall {
+      position: fixed; inset: 0; z-index: 9000;
+      display: none;
+      align-items: center; justify-content: center;
+      text-align: center;
+      padding: 32px 24px;
+      background: #0a0a0b;
+      color: #f2efe9;
+      font-family: 'Martian Mono', ui-monospace, monospace;
+      -webkit-font-smoothing: antialiased;
+    }
+    html.too-small #toosmall { display: flex; }
+    #toosmall h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    #toosmall .too { color: #7a7670; transition: color 0.2s; }
+    @media (prefers-reduced-motion: reduce) {
+      #toosmall .too { transition: none; }
+    }
   </style>
   <script>
     (function () {
-      var query = '(pointer: coarse) and (hover: none), (max-width: 1000px)';
-      var isMobile = function () { return matchMedia(query).matches; };
+      var MOBILE = '(pointer: coarse) and (hover: none)';
+      var NARROW = '(max-width: 1500px)';
+
+      var mqMobile = matchMedia(MOBILE);
+      var mqNarrow = matchMedia(NARROW);
+      var onMq = function (mq, fn) {
+        mq.addEventListener ? mq.addEventListener('change', fn) : mq.addListener(fn);
+      };
+
+      var isMobile = function () { return mqMobile.matches; };
+      var isNarrow = function () { return !mqMobile.matches && mqNarrow.matches; };
       window.__isMobile = isMobile;
 
       var mobile = isMobile();
@@ -43,14 +69,34 @@
       css.href = mobile ? 'mobile.css' : 'styles.css';
       document.head.appendChild(css);
 
-      var timer, mq = matchMedia(query);
-      var onChange = function () {
+      // The mobile vs desktop split changes which assets load, so it still
+      // needs a reload. The narrow-desktop overlay toggles live, no reload.
+      var timer;
+      onMq(mqMobile, function () {
         clearTimeout(timer);
         timer = setTimeout(function () {
-          if (mq.matches !== mobile) location.reload();
+          if (mqMobile.matches !== mobile) location.reload();
         }, 250);
+      });
+
+      var GOAL = 1500;
+      var GRAY = [122, 118, 112], BLUE = [0, 132, 190];
+      var tooEl = null;
+      var paintToo = function () {
+        if (!document.documentElement.classList.contains('too-small')) return;
+        tooEl = tooEl || document.querySelector('#toosmall .too');
+        var t = Math.max(0, Math.min(1, innerWidth / GOAL));
+        var c = GRAY.map(function (g, i) { return Math.round(g + (BLUE[i] - g) * t); });
+        tooEl.style.color = 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
       };
-      mq.addEventListener ? mq.addEventListener('change', onChange) : mq.addListener(onChange);
+
+      var syncOverlay = function () {
+        document.documentElement.classList.toggle('too-small', !mobile && isNarrow());
+        paintToo();
+      };
+      onMq(mqNarrow, syncOverlay);
+      addEventListener('resize', paintToo, { passive: true });
+      window.__syncOverlay = syncOverlay;
 
       window.__loadSite = function () {
         function script(src, cb) {
@@ -74,6 +120,10 @@
   <div id="wipe">
     <div class="pane top"></div>
     <div class="pane bot"></div>
+  </div>
+
+  <div id="toosmall" role="alert">
+    <h1>window <span class="too">too</span> small</h1>
   </div>
 
   <template id="desktop-markup">
@@ -111,6 +161,7 @@
     (function () {
       if (!window.__isMobile()) {
         document.body.appendChild(document.getElementById('desktop-markup').content.cloneNode(true));
+        window.__syncOverlay();
       }
       window.__loadSite();
 
