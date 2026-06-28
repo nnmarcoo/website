@@ -3,6 +3,7 @@
   --ink: #f2efe9;
   --muted: #7a7670;
   --accent: #0084be;
+  --nav-label-end: 300px;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -32,7 +33,6 @@ body::after {
   height: 100%;
 }
 
-/* ============ shape cluster (nav) ============ */
 .cluster {
   position: absolute;
   top: 64px;
@@ -74,7 +74,6 @@ body::after {
   background-size: 42px 42px;
 }
 
-/* ============ shared letter layer ============ */
 .label-layer { position: absolute; inset: 0; pointer-events: none; z-index: 51; }
 .label-layer .ltr {
   position: absolute;
@@ -97,7 +96,6 @@ body::after {
 }
 .label-layer .measurer { visibility: hidden; }
 
-/* ============ home / wordmark ============ */
 .home {
   position: absolute;
   top: 50%;
@@ -120,7 +118,6 @@ body::after {
 }
 .wordmark .ltr { display: inline-block; will-change: transform; }
 
-/* ============ marco -> logo morph overlay ============ */
 .morph-canvas {
   position: fixed;
   inset: 0;
@@ -128,11 +125,12 @@ body::after {
   pointer-events: none;
 }
 
-/* ============ persistent "next" chevron ============ */
 #adv-chev {
+  --cw: min(680px, 82vw);
   position: absolute;
-  left: 50%; top: 50%;
-  transform: translate(calc(min(680px, 82vw) / 2 - 40px), 96px);
+  top: 50%;
+  left: max(50%, calc(var(--nav-label-end) + var(--cw) / 2));
+  transform: translate(calc(var(--cw) / 2 - 40px), 96px);
   z-index: 52;
   opacity: 0;
   pointer-events: none;
@@ -149,21 +147,59 @@ body::after {
 .adv-btn:hover { color: var(--accent); }
 .adv-btn svg { width: 28px; height: 28px; }
 
-/* ============ centered section content ============ */
 #content {
+  --cw: min(680px, 82vw);
   position: absolute;
-  top: 50%; left: 50%;
+  top: 50%;
+  left: max(50%, calc(var(--nav-label-end) + var(--cw) / 2));
   transform: translate(-50%, -50%);
-  width: min(680px, 82vw);
+  width: var(--cw);
   overflow: visible;
   opacity: 0;
   pointer-events: none;
   z-index: 52;
 }
 #content.active { pointer-events: auto; }
-#content.wide { width: min(880px, 92vw); }
+#content.wide { --cw: min(880px, 92vw); }
+#content.article {
+  --cw: min(680px, 82vw);
+  top: 96px;
+  bottom: 40px;
+  transform: translateX(-50%);
+  display: flex;
+}
 
-/* ---- about ---- */
+@media (max-width: 1200px) {
+  :root { --nav-label-end: 0px; }
+
+  .cluster {
+    top: 32px; left: 50%;
+    transform: translateX(-50%);
+    flex-direction: row;
+    gap: 20px;
+  }
+
+  #content {
+    --cw: min(680px, 90vw);
+    top: 150px;
+    bottom: auto;
+    transform: translateX(-50%);
+  }
+  #content.wide { --cw: min(720px, 92vw); }
+  #content.article {
+    top: 150px;
+    bottom: 28px;
+    transform: translateX(-50%);
+  }
+
+  #adv-chev { display: none; }
+
+  .proj-row { gap: 10px; padding: 12px 2px; }
+  .proj-name { font-size: clamp(17px, 4.5vw, 24px); }
+  .proj-desc { font-size: 10px; max-width: 46%; }
+  .proj-arrow svg { width: 17px; height: 17px; }
+}
+
 .about p {
   font-size: clamp(16px, 2.2vw, 24px);
   font-weight: 400;
@@ -190,7 +226,6 @@ body::after {
 .contacts a:hover { color: var(--accent); }
 .contacts svg { width: 100%; height: 100%; }
 
-/* ---- projects list ---- */
 .proj-list { display: flex; flex-direction: column; }
 .proj-row {
   display: flex;
@@ -227,7 +262,27 @@ body::after {
 .proj-row:hover .proj-name { color: var(--accent); }
 .proj-row:hover .proj-arrow { color: var(--accent); transform: translateX(4px); }
 
-/* ---- project detail ---- */
+.blog-view { width: 100%; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.blog-list .proj-row { gap: 16px; }
+.blog-date { display: inline-block; margin-top: 4px; color: var(--muted); opacity: 0.7; font-size: 10px; }
+
+.blog-detail { display: flex; flex-direction: column; gap: 16px; flex: 1; min-height: 0; }
+.blog-detail .pd-top { flex-shrink: 0; }
+.post {
+  flex: 1; min-height: 0; width: 100%; max-width: 680px;
+  overflow-y: auto; overflow-x: hidden;
+  padding-right: 8px;
+  scrollbar-width: thin; scrollbar-color: #ffffff1f transparent;
+}
+.post::-webkit-scrollbar { width: 5px; }
+.post::-webkit-scrollbar-thumb { background: #ffffff1f; border-radius: 99px; }
+.post::-webkit-scrollbar-thumb:hover { background: #ffffff33; }
+.post-title { font-size: 26px; font-weight: 700; }
+.post-date { font-size: 11px; color: var(--muted); margin: 6px 0 20px; }
+.post-body { font-size: 14px; font-weight: 400; line-height: 1.7; color: var(--muted); }
+.post-body p { margin-bottom: 16px; }
+.post-body p:last-child { margin-bottom: 4px; }
+
 .proj-view { width: 100%; }
 .proj-detail {
   display: grid;
@@ -307,7 +362,6 @@ body::after {
 .mlink.secondary { background: #1b1f24; border: 1px solid #ffffff1f; color: var(--ink); }
 .mlink svg { width: 16px; height: 16px; }
 
-/* ---- gallery ---- */
 .gallery {
   display: flex; width: 100%; height: 100%;
   overflow-x: auto;
@@ -350,7 +404,6 @@ body::after {
 .gal-prev { left: 10px; }
 .gal-next { right: 10px; }
 
-/* ============ lightbox ============ */
 #lightbox {
   position: fixed; inset: 0; z-index: 200;
   display: flex; align-items: center; justify-content: center;

@@ -17,6 +17,7 @@ const splitLetters = (el, text) => {
 
   let driftTweens = [];
   const startDrift = () => {
+    gsap.set(letters, { y: 0, rotation: 0 });
     driftTweens = letters.map((l, i) => gsap.to(l, {
       y: () => rand(-10, 10), rotation: () => rand(-3, 3),
       duration: () => rand(2.4, 4), delay: i * 0.15,
@@ -75,7 +76,8 @@ const splitLetters = (el, text) => {
     const rots = letters.map(l => +gsap.getProperty(l, 'rotation') || 0);
     const left = Math.min(...rects.map(r => r.left)), right = Math.max(...rects.map(r => r.right));
     const top = Math.min(...rects.map(r => r.top)), bot = Math.max(...rects.map(r => r.bottom));
-    const cx = (left + right) / 2, cy = (top + bot) / 2;
+    const wmr = wm.getBoundingClientRect();
+    const cx = (left + right) / 2, cy = (wmr.top + wmr.bottom) / 2;
     const cs = getComputedStyle(wm), F = parseFloat(cs.fontSize);
     ink = cs.color;
 
@@ -155,6 +157,7 @@ const splitLetters = (el, text) => {
     busy = true;
     driftTweens.forEach(t => t.kill());
     gsap.killTweensOf(letters);
+    gsap.set(letters, { y: 0, rotation: 0 });
     build();
 
     canvas = document.createElement('canvas');
@@ -200,7 +203,12 @@ const splitLetters = (el, text) => {
     startDrift();
   };
 
-  addEventListener('resize', () => { if (canvas) { sizeCanvas(); render(lastT); } });
+  addEventListener('resize', () => {
+    if (!canvas) return;
+    sizeCanvas();
+    build();
+    render(lastT);
+  });
   wm.addEventListener('click', toLogo);
   window.__morphDismiss = dismiss;
 })();
@@ -262,7 +270,8 @@ const splitLetters = (el, text) => {
   const HALF = 25;
   let selected = null;
   window.__isHome = () => selected === null;
-  const shapeRestX = node => (node === selected ? HALF : 0);
+  const isTopbar = () => matchMedia('(max-width: 1200px)').matches;
+  const shapeRestX = node => (node === selected && !isTopbar() ? HALF : 0);
 
   nodes.forEach(node => {
     const c = node.style.getPropertyValue('--c').trim() || '#ffffff';
@@ -279,7 +288,7 @@ const splitLetters = (el, text) => {
   const measureBases = () => {
     const lr = layer.getBoundingClientRect();
     nodes.forEach(node => {
-      const sr = node.querySelector('.shape').getBoundingClientRect();
+      const sr = node.getBoundingClientRect();
       node._base = { x: sr.left - lr.left, y: sr.top - lr.top, w: sr.width, h: sr.height };
     });
   };
@@ -307,9 +316,13 @@ const splitLetters = (el, text) => {
   addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      if (selected) return;
       measureBases();
-      placeAnchorsHome();
+      if (selected) {
+        moveSquare(selected);
+        transitionTo(selected);
+      } else {
+        placeAnchorsHome();
+      }
     }, 150);
   });
 
@@ -340,6 +353,28 @@ const splitLetters = (el, text) => {
     },
   ];
 
+  const POSTS = [
+    {
+      title: 'about',
+      date: '2026-06-27',
+      body: [
+        'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.',
+        'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.',
+        'Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.',
+        'Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?',
+        'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga.',
+        'Et harum quidem rerum facilis est et expedita distinctio. Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet.',
+        'Ut et voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores alias consequatur aut perferendis doloribus asperiores repellat. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore.',
+      ],
+    },
+  ];
+
+  const fmtDate = iso => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const postExcerpt = (p, words = 12) => {
+    const parts = (p.body[0] || '').split(/\s+/);
+    return parts.slice(0, words).join(' ') + (parts.length > words ? '…' : '');
+  };
+
   const ICON_GH = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>`;
   const ICON_EXT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
   const CHEV_L = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`;
@@ -353,7 +388,7 @@ const splitLetters = (el, text) => {
         <div class="about-foot">${CONTACTS}</div>
       </div>`;
     if (label === 'projects') return `<div class="proj-view"></div>`;
-    if (label === 'blog') return `<p class="muted center">Coming soon...</p>`;
+    if (label === 'blog') return POSTS.length ? `<div class="blog-view"></div>` : `<p class="muted center">Coming soon...</p>`;
     return '';
   };
 
@@ -492,13 +527,82 @@ const splitLetters = (el, text) => {
     showList();
   };
 
+  const blogListHTML = () => `
+    <div class="proj-list blog-list">
+      ${POSTS.map((p, i) => `
+        <div class="proj-row" data-i="${i}">
+          <span class="proj-idx">${String(i + 1).padStart(2, '0')}</span>
+          <span class="proj-name">${p.title}</span>
+          <span class="proj-desc">${postExcerpt(p)}<br><span class="blog-date">${fmtDate(p.date)}</span></span>
+          <span class="proj-arrow">${CHEV_R}</span>
+        </div>`).join('')}
+    </div>`;
+
+  const blogDetailHTML = idx => {
+    const p = POSTS[idx];
+    const N = POSTS.length;
+    return `
+      <div class="blog-detail">
+        <div class="pd-top">
+          <button class="pd-back">${CHEV_L}<span>all</span></button>
+          ${N > 1 ? `
+            <div class="pd-nav">
+              <button class="pd-cy pd-prev" aria-label="Previous post">${CHEV_L}</button>
+              <button class="pd-cy pd-next" aria-label="Next post">${CHEV_R}</button>
+            </div>` : ''}
+        </div>
+        <article class="post">
+          <h2 class="post-title">${p.title}</h2>
+          <div class="post-date">${fmtDate(p.date)}</div>
+          <div class="post-body">${p.body.map(par => `<p>${par}</p>`).join('')}</div>
+        </article>
+      </div>`;
+  };
+
+  const mountBlog = () => {
+    const view = content.querySelector('.blog-view');
+    const N = POSTS.length;
+
+    const swapOut = (dir, then) => {
+      const cur = view.firstElementChild;
+      if (!cur) return then();
+      gsap.to(cur, { opacity: 0, x: 24 * dir, duration: 0.18, ease: 'power2.in', onComplete: then });
+    };
+
+    const showList = (fromX = -24) => {
+      content.classList.remove('article');
+      view.innerHTML = blogListHTML();
+      view.querySelectorAll('.proj-name').forEach(el => hoverPop(el, 1.06, 3));
+      view.querySelectorAll('.proj-row').forEach(row =>
+        row.addEventListener('click', () => swapOut(-1, () => showDetail(+row.dataset.i, 1))));
+      gsap.fromTo(view.firstElementChild, { opacity: 0, x: fromX }, { opacity: 1, x: 0, duration: 0.35, ease: 'power3.out' });
+    };
+
+    const showDetail = (idx, dir = 1) => {
+      content.classList.add('article');
+      view.innerHTML = blogDetailHTML(idx);
+      view.querySelector('.pd-back').addEventListener('click', () => swapOut(1, () => showList(-24)));
+      const prev = view.querySelector('.pd-prev');
+      const next = view.querySelector('.pd-next');
+      if (prev) prev.addEventListener('click', () => showDetail((idx - 1 + N) % N, -1));
+      if (next) next.addEventListener('click', () => showDetail((idx + 1) % N, 1));
+      view.querySelectorAll('.pd-back, .pd-cy').forEach(el => hoverPop(el));
+      const inner = [view.querySelector('.post-title'), view.querySelector('.post-date'), view.querySelector('.post-body')];
+      gsap.from(inner, { opacity: 0, y: 16, duration: 0.4, ease: 'power3.out', stagger: 0.05 });
+    };
+
+    showList();
+  };
+
   const showContent = node => {
     document.title = `marco / ${node.dataset.label}`;
     setAdv(node.dataset.label === 'about' ? 'projects' : null);
     content.innerHTML = renderSection(node.dataset.label);
-    content.classList.toggle('wide', node.dataset.label === 'projects');
+    content.classList.remove('article');
+    content.classList.toggle('wide', node.dataset.label === 'projects' || node.dataset.label === 'blog');
     content.querySelectorAll('.contacts a').forEach(el => hoverPop(el));
     if (node.dataset.label === 'projects') mountProjects();
+    if (node.dataset.label === 'blog' && POSTS.length) mountBlog();
     content.classList.add('active');
     home.style.pointerEvents = 'none';
     gsap.to(home, { opacity: 0, duration: 0.3, ease: 'power2.out' });
@@ -510,7 +614,7 @@ const splitLetters = (el, text) => {
     document.title = 'marco';
     content.classList.remove('active');
     gsap.killTweensOf(content);
-    gsap.to(content, { opacity: 0, duration: 0.25, ease: 'power2.in', onComplete: () => { content.classList.remove('wide'); content.innerHTML = ''; } });
+    gsap.to(content, { opacity: 0, duration: 0.25, ease: 'power2.in', onComplete: () => { content.classList.remove('wide', 'article'); content.innerHTML = ''; } });
     home.style.pointerEvents = '';
     gsap.to(home, { opacity: 1, duration: 0.45, delay: 0.05, ease: 'power2.out' });
   };
@@ -520,6 +624,7 @@ const splitLetters = (el, text) => {
     gsap.killTweensOf(shape, 'x');
     gsap.to(shape, { x: shapeRestX(n), duration: 0.45, ease: 'back.out(2)' });
     const a = n.anchor;
+    measureBases();
     a.home = homeFor(n);
     if (a.atHome) {
       gsap.killTweensOf(a.el);
@@ -573,9 +678,18 @@ const splitLetters = (el, text) => {
     const word = node.dataset.label;
     const color = node.style.getPropertyValue('--c').trim() || '#fff';
 
+    measureBases();
     const b = node._base;
-    const anchorX = b.x + b.w + shapeRestX(node) + GAP;
-    const posY = b.y + (b.h - FS) / 2 + opticalY(word[0]);
+    const wordW = [...word].reduce((s, ch) => s + widthOf(ch), 0);
+
+    let anchorX, posY;
+    if (isTopbar()) {
+      anchorX = b.x + (b.w - wordW) / 2;
+      posY = b.y + b.h + GAP + opticalY(word[0]);
+    } else {
+      anchorX = b.x + b.w + shapeRestX(node) + GAP;
+      posY = b.y + (b.h - FS) / 2 + opticalY(word[0]);
+    }
 
     const slots = [];
     let cursor = anchorX;
@@ -627,6 +741,7 @@ const splitLetters = (el, text) => {
     if (selected) { transitionTo(selected); return; }
     active.forEach(exit);
     active = [];
+    measureBases();
     nodes.forEach(n => sendAnchorHome(n.anchor));
   };
 
